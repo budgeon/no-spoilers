@@ -1,21 +1,52 @@
 import { useState, useRef } from "react";
 import { G } from "../constants/tokens.js";
 import { LS, SK } from "../constants/storage.js";
+import { tmdb, hasKey } from "../constants/api.js";
 import Center from "../components/Center.jsx";
 import Spinner from "../components/Spinner.jsx";
 
-export default function Importer({onClose, watched, setWatched, watchlist, setWatchlist}) {
+export default function Importer({onClose, watched, setWatched, watchlist, setWatchlist, epTotals, setEpTotals}) {
   const [stage, setStage] = useState("idle");
   const [err, setErr] = useState("");
   const [preview, setPreview] = useState(null);
   const [progress, setProgress] = useState(0);
   const fileRef = useRef(null);
 
-  const parseCSV = text => { const lines = text.trim().split("\n"); if (lines.length < 2) return null; const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g,"").toLowerCase()); const rows = []; for (let i = 1; i < lines.length; i++) { const vals = lines[i].match(/(".*?"|[^,]+)(?=,|$)/g) || []; const row = {}; headers.forEach((h,idx) => { row[h] = (vals[idx] || "").replace(/^"|"$/g,"").trim(); }); rows.push(row); } return {headers, rows}; };
+  const splitLine = s => { const r=[]; let cur='', q=false; for(const c of s){if(c==='"'){q=!q}else if(c===','&&!q){r.push(cur);cur=''}else{cur+=c}} r.push(cur); return r; };
+  const parseCSV = text => { const lines = text.trim().split("\n"); if (lines.length < 2) return null; const headers = splitLine(lines[0]).map(h => h.trim().replace(/^"|"$/g,"").toLowerCase()); const rows = []; for (let i = 1; i < lines.length; i++) { const vals = splitLine(lines[i]); const row = {}; headers.forEach((h,idx) => { row[h] = (vals[idx] || "").replace(/^"|"$/g,"").trim(); }); rows.push(row); } return {headers, rows}; };
 
-  const handleFile = e => { const file = e.target.files[0]; if (!file) return; if (!file.name.endsWith(".csv")) { setErr("Please upload a .csv file."); setStage("error"); return; } setStage("parsing"); const reader = new FileReader(); reader.onload = ev => { try { const p = parseCSV(ev.target.result); if (!p) throw new Error("Empty file"); const h = p.headers; if (!h.includes("show_name") && !h.includes("name") && !h.includes("title")) throw new Error("Doesn't look like a TV Time export."); const shows = new Set(), movies = new Set(), eps = []; p.rows.forEach(r => { const type = (r.type || r.media_type || "show").toLowerCase(); const name = r.show_name || r.series_name || r.name || r.title || ""; if (!name) return; if (type.includes("movie") || type.includes("film")) movies.add(name); else { shows.add(name); eps.push(r); }; }); setPreview({rows: p.rows, shows: [...shows], movies: [...movies], episodeCount: eps.length, totalRows: p.rows.length}); setStage("preview"); } catch(e) { setErr(e.message); setStage("error"); } }; reader.readAsText(file); };
+  const parseFile = file => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = ev => { try { const p = parseCSV(ev.target.result); if (!p) throw new Error(`${file.name}: empty file`); const h = p.headers; if (!h.includes("show_name") && !h.includes("series_name") && !h.includes("movie_name") && !h.includes("entity_type") && !h.includes("name") && !h.includes("title")) throw new Error(`${file.name}: doesn't look like a TV Time export`); if (h.includes("entity_type")) { resolve({ watchedRows: p.rows.filter(r => r.type === "watch" && r.entity_type === "movie"), watchlistRows: p.rows.filter(r => r.type === "follow" && r.entity_type === "movie") }); } else { const episodeRows = p.rows.filter(r => r.ep_id); const watchedShowNames = new Set(episodeRows.map(r => r.series_name).filter(Boolean)); const tvWlRows = p.rows.filter(r => !r.ep_id && r.series_name && !watchedShowNames.has(r.series_name)); resolve({ watchedRows: episodeRows, watchlistRows: tvWlRows }); } } catch(e) { reject(e); } }; reader.readAsText(file); });
 
-  const runImport = async () => { if (!preview) return; setStage("importing"); const nw = {...watched}; let proc = 0; const showMap = {}, movieNames = new Set(); preview.rows.forEach(r => { const type = (r.type || r.media_type || "show").toLowerCase(); const name = r.show_name || r.series_name || r.name || r.title || ""; if (!name) return; if (type.includes("movie") || type.includes("film")) movieNames.add(name); else { if (!showMap[name]) showMap[name] = {episodes:[], name}; showMap[name].episodes.push(r); } proc++; setProgress(Math.round((proc/preview.rows.length)*80)); }); Object.values(showMap).forEach(show => { const sid = `tvtime_${show.name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `tv_${sid}`; if (!nw[wk]) nw[wk] = {id:sid, type:"tv", name:show.name, poster_path:null, genre_ids:[], watchedAt:Date.now(), importedFrom:"tvtime", episodeCount:show.episodes.length}; show.episodes.forEach((ep,i) => { const eid = ep.episode_id || ep.ep_id || i; const ek = `ep_show${sid}_ep${eid}`; if (!nw[ek]) nw[ek] = {epId:eid, showId:sid, watchedAt:ep.watched_at?new Date(ep.watched_at).getTime():Date.now(), importedFrom:"tvtime"}; }); }); setProgress(85); movieNames.forEach(name => { const sid = `tvtime_movie_${name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `movie_${sid}`; if (!nw[wk]) nw[wk] = {id:sid, type:"movie", name, poster_path:null, genre_ids:[], watchedAt:Date.now(), importedFrom:"tvtime"}; }); setProgress(95); setWatched(nw); LS.set(SK.W, nw); setProgress(100); setTimeout(() => setStage("done"), 400); };
+  const handleFile = e => { const files = [...e.target.files]; if (!files.length) return; const bad = files.find(f => !f.name.endsWith(".csv")); if (bad) { setErr(`${bad.name} is not a .csv file.`); setStage("error"); return; } setStage("parsing"); Promise.all(files.map(parseFile)).then(results => { const combined = results.flatMap(r => r.watchedRows); const allWlRows = results.flatMap(r => r.watchlistRows); const watchedMovieNames = new Set(combined.map(r => r.movie_name).filter(Boolean)); const wlRows = allWlRows.filter(r => !watchedMovieNames.has(r.movie_name)); const shows = new Set(), movies = new Set(), eps = []; combined.forEach(r => { const name = r.show_name || r.series_name || r.name || r.title || r.movie_name || ""; const type = (r.entity_type || r.media_type || (r.movie_name && !r.series_name ? "movie" : "show")).toLowerCase(); if (!name) return; if (type.includes("movie") || type.includes("film")) movies.add(name); else { shows.add(name); eps.push(r); } }); const wlMovieNames = new Set(wlRows.map(r => r.movie_name).filter(Boolean)); const wlShowNames = new Set(wlRows.filter(r => r.series_name && !r.movie_name).map(r => r.series_name)); setPreview({rows: combined, watchlistRows: wlRows, shows: [...shows], movies: [...movies], episodeCount: eps.length, totalRows: shows.size + movies.size + eps.length + wlMovieNames.size + wlShowNames.size, watchlistCount: wlMovieNames.size + wlShowNames.size}); setStage("preview"); }).catch(e => { setErr(e.message); setStage("error"); }); };
+
+  const enrichImported = async (nw, nwl = {}) => {
+    if (!hasKey()) return;
+    const cache = LS.get(SK.EC, {});
+    const applyToNwl = (entry, e) => ({ ...entry, poster_path: e.poster_path, tmdbId: e.tmdbId, vote_average: e.vote_average || 0, item: { ...entry.item, poster_path: e.poster_path, genre_ids: e.genre_ids || [], tmdbId: e.tmdbId, vote_average: e.vote_average || 0 } });
+    const newEpTotals = {...LS.get(SK.EP, {})};
+    Object.entries(nw).forEach(([, v]) => { if (v.type === "tv" && v.importedFrom === "tvtime" && !newEpTotals[v.id]) { const ck = `tv:${v.name}`; if (cache[ck]?.episodeCount > 0) newEpTotals[v.id] = cache[ck].episodeCount; } });
+    setEpTotals({...newEpTotals}); LS.set(SK.EP, newEpTotals);
+    const allEntries = new Map();
+    Object.entries(nw).forEach(([wk, v]) => { if (v.importedFrom === "tvtime" && !v.poster_path) allEntries.set(`${v.type}:${v.name}`, {wk, entry: v}); });
+    Object.entries(nwl).forEach(([wk, v]) => { const ck = `${v.type}:${v.name}`; if (v.importedFrom === "tvtime" && !v.poster_path && !allEntries.has(ck)) allEntries.set(ck, {wk, entry: v}); });
+    allEntries.forEach(({wk, entry}) => { const ck = `${entry.type}:${entry.name}`; if (cache[ck]) { const e = cache[ck]; if (nw[wk]) nw[wk] = {...nw[wk], ...e}; if (nwl[wk]) nwl[wk] = applyToNwl(nwl[wk], e); } });
+    setWatched({...nw}); setWatchlist({...nwl});
+    const uncached = [...allEntries.entries()].filter(([ck]) => !cache[ck]);
+    const BATCH = 10;
+    for (let i = 0; i < uncached.length; i += BATCH) {
+      await Promise.all(uncached.slice(i, i + BATCH).map(async ([ck, {wk, entry}]) => {
+        try {
+          const d = await tmdb(entry.type === "movie" ? "/search/movie" : "/search/tv", {query: entry.name});
+          const hit = d.results?.[0];
+          if (hit) { const enriched = {poster_path: hit.poster_path, genre_ids: hit.genre_ids || [], vote_average: hit.vote_average || 0, tmdbId: hit.id}; if (entry.type === "tv") { try { const det = await tmdb(`/tv/${hit.id}`); if (det.number_of_episodes > 0) { enriched.episodeCount = det.number_of_episodes; newEpTotals[entry.id] = det.number_of_episodes; } } catch {} } if (nw[wk]) nw[wk] = {...nw[wk], ...enriched}; if (nwl[wk]) nwl[wk] = applyToNwl(nwl[wk], enriched); cache[ck] = {...enriched, ts: Date.now()}; }
+        } catch { /* keep entry as-is */ }
+      }));
+      setWatched({...nw}); setWatchlist({...nwl});
+      LS.set(SK.W, nw); LS.set(SK.WL, nwl); LS.set(SK.EC, cache); setEpTotals({...newEpTotals}); LS.set(SK.EP, newEpTotals);
+    }
+  };
+
+  const runImport = async () => { if (!preview) return; setStage("importing"); const nw = {...watched}; Object.keys(nw).forEach(k => { if (k.startsWith("ep_show") && nw[k].importedFrom === "tvtime") delete nw[k]; }); let proc = 0; const showMap = {}, movieNames = new Set(); preview.rows.forEach(r => { const name = r.show_name || r.series_name || r.name || r.title || r.movie_name || ""; const type = (r.entity_type || r.media_type || (r.movie_name && !r.series_name ? "movie" : "show")).toLowerCase(); if (!name) return; if (type.includes("movie") || type.includes("film")) movieNames.add(name); else { if (!showMap[name]) showMap[name] = {episodes:[], name}; showMap[name].episodes.push(r); } proc++; setProgress(Math.round((proc/preview.rows.length)*80)); }); Object.values(showMap).forEach(show => { const sid = `tvtime_${show.name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `tv_${sid}`; if (!nw[wk]) nw[wk] = {id:sid, type:"tv", name:show.name, poster_path:null, genre_ids:[], watchedAt:Date.now(), importedFrom:"tvtime", episodeCount:show.episodes.length}; show.episodes.forEach((ep,i) => { const eid = ep.episode_id || ep.ep_id || i; const sn = parseInt(ep.season_number); const en = parseInt(ep.episode_number); const ek = (!isNaN(sn) && !isNaN(en)) ? `ep_show${sid}_s${sn}e${en}` : `ep_show${sid}_ep${eid}`; if (!nw[ek]) nw[ek] = {epId:eid, showId:sid, watchedAt:ep.watched_at?new Date(ep.watched_at).getTime():ep.created_at?new Date(ep.created_at).getTime():Date.now(), importedFrom:"tvtime"}; }); }); setProgress(85); movieNames.forEach(name => { const sid = `tvtime_movie_${name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `movie_${sid}`; if (!nw[wk]) nw[wk] = {id:sid, type:"movie", name, poster_path:null, genre_ids:[], watchedAt:Date.now(), importedFrom:"tvtime"}; }); const nwl = {...watchlist}; const wlMovieNames = new Set(preview.watchlistRows.map(r => r.movie_name).filter(Boolean)); wlMovieNames.forEach(name => { const sid = `tvtime_movie_${name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `movie_${sid}`; if (!nwl[wk]) nwl[wk] = {id:sid, type:"movie", name, poster_path:null, addedAt:Date.now(), item:{id:sid, type:"movie", media_type:"movie", name, poster_path:null, genre_ids:[]}, importedFrom:"tvtime"}; }); const wlShowNames = new Set(preview.watchlistRows.filter(r => r.series_name && !r.movie_name).map(r => r.series_name).filter(Boolean)); wlShowNames.forEach(name => { const sid = `tvtime_${name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `tv_${sid}`; if (!nwl[wk]) nwl[wk] = {id:sid, type:"tv", name, poster_path:null, addedAt:Date.now(), item:{id:sid, type:"tv", media_type:"tv", name, poster_path:null, genre_ids:[]}, importedFrom:"tvtime"}; }); setProgress(95); setWatched(nw); LS.set(SK.W, nw); setWatchlist(nwl); LS.set(SK.WL, nwl); setProgress(100); setTimeout(() => { setStage("done"); enrichImported(nw, nwl); }, 400); };
 
   return (
     <div className="overlay overlay-importer" onClick={onClose}>
@@ -28,21 +59,22 @@ export default function Importer({onClose, watched, setWatched, watchlist, setWa
           <button onClick={onClose} style={{color:G.muted, fontSize:18}}>✕</button>
         </div>
         <div style={{background:G.accentDim, border:`1px solid rgba(107,140,174,0.3)`, borderRadius:10, padding:"10px 14px", fontSize:12, color:G.accent, marginBottom:20}}>
-          ⚠ Export at <strong>gdpr.tvtime.com</strong> then upload <code style={{background:"rgba(0,0,0,0.06)", padding:"1px 5px", borderRadius:4}}>tracking-prod-records-v2.csv</code>
+          ⚠ Export at <strong>gdpr.tvtime.com</strong> then select <strong>both</strong> files at once — <code style={{background:"rgba(0,0,0,0.06)", padding:"1px 5px", borderRadius:4}}>tracking-prod-records-v2.csv</code> (TV episodes) and <code style={{background:"rgba(0,0,0,0.06)", padding:"1px 5px", borderRadius:4}}>tracking-prod-records.csv</code> (movies only)
         </div>
 
         {stage === "idle" && (
           <div className="drop-zone" onClick={() => fileRef.current?.click()}>
             <div style={{fontSize:32, marginBottom:8}}>📄</div>
-            <div style={{fontSize:14, color:G.text, marginBottom:4}}>Drop CSV here or click to browse</div>
-            <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} style={{display:"none"}}/>
+            <div style={{fontSize:14, color:G.text, marginBottom:4}}>Drop CSVs here or click to browse</div>
+            <div style={{fontSize:12, color:G.muted}}>Select both files at once for a full import</div>
+            <input ref={fileRef} type="file" accept=".csv" multiple onChange={handleFile} style={{display:"none"}}/>
           </div>
         )}
         {stage === "parsing" && <Center><Spinner/></Center>}
         {stage === "preview" && preview && (
           <div>
-            <div style={{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:16}}>
-              {[{l:"TV Shows",v:preview.shows.length,c:G.blue},{l:"Movies",v:preview.movies.length,c:G.accent},{l:"Episodes",v:preview.episodeCount.toLocaleString(),c:G.green}].map(s => (
+            <div style={{display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10, marginBottom:16}}>
+              {[{l:"TV Shows",v:preview.shows.length,c:G.blue},{l:"Movies",v:preview.movies.length,c:G.accent},{l:"Episodes",v:preview.episodeCount.toLocaleString(),c:G.success},{l:"Watchlist",v:preview.watchlistCount,c:G.dim}].map(s => (
                 <div key={s.l} style={{background:G.bg, borderRadius:10, padding:"12px", textAlign:"center"}}>
                   <div style={{fontSize:22, fontWeight:700, color:s.c}}>{s.v}</div>
                   <div style={{fontSize:11, color:G.muted, marginTop:2}}>{s.l}</div>

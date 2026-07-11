@@ -1,10 +1,9 @@
 import { memo } from "react";
-import { LS, SK } from "../constants/storage.js";
 
-export default memo(function EpisodeRow({ep, showId, watched, onToggle, onOpenComments}) {
-  const key = `ep_show${showId}_ep${ep.id}`;
-  const ew = !!watched[key];
-  const commentCount = LS.get(SK.C, {})[`show${showId}_ep${ep.id}`]?.length || 0;
+export default memo(function EpisodeRow({ep, showId, watched, onToggle, onOpenComments, commentCount = 0}) {
+  const newKey = `ep_show${showId}_s${ep.season_number}e${ep.episode_number}`;
+  const oldKey = `ep_show${showId}_ep${ep.id}`;
+  const ew = !!(watched[newKey] || watched[oldKey]);
   return (
     <div className="episode-row">
       <button onClick={() => onToggle(ep)} className={`episode-check${ew ? " watched" : ""}`}>✓</button>
