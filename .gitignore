@@ -29,5 +29,6 @@ yarn-error.log*
 # Vite
 vite.config.js.timestamp-*
 
-# GDPR export data
+# GDPR export data and test import files
 docs/gdpr-data/
+docs/test-*.csv
