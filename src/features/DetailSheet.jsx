@@ -3,6 +3,7 @@ import { G } from "../constants/tokens.js";
 import { LS, SK } from "../constants/storage.js";
 import { tmdb, TMDB_IMG, hasKey } from "../constants/api.js";
 import { useWatchlistToggle } from "../hooks/useWatchlistToggle.js";
+import { upsertWatchedItem, deleteWatchedItem, upsertWatchedEpisode, deleteWatchedEpisode, upsertRating, upsertEpTotal } from "../lib/db.js";
 import Center from "../components/Center.jsx";
 import Spinner from "../components/Spinner.jsx";
 import Pill from "../components/Pill.jsx";
@@ -17,7 +18,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
   const [episodes, setEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [commentEp, setCommentEp] = useState(null);
-  const [commentCounts, setCommentCounts] = useState(() => LS.get(SK.C, {}));
+  const [commentCounts, setCommentCounts] = useState({});
   const [ratingHover, setRatingHover] = useState(0);
   const loadAbortRef = useRef(null);
 
@@ -27,7 +28,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
   const totalEps = epTotals[id] || 0;
   const watchedEps = totalEps > 0 ? Math.min(rawWatchedEps, totalEps) : rawWatchedEps;
 
-  const toggleWL = useWatchlistToggle(watchlist, setWatchlist);
+  const toggleWL = useWatchlistToggle(watchlist, setWatchlist, user.id);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +44,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
             const r = d.seasons.filter(s => s.season_number > 0);
             setSeasons(r);
             const t = r.reduce((a,s) => a+s.episode_count, 0);
-            if (t > 0) { const nt = {...epTotals, [id]: t}; setEpTotals(nt); LS.set(SK.EP, nt); }
+            if (t > 0) { const nt = {...epTotals, [id]: t}; setEpTotals(nt); upsertEpTotal(id, t); }
             if (r.length) loadEps(r[0].season_number);
           }
         } else throw new Error();
@@ -53,7 +54,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
         if (isTV) {
           setSeasons([{season_number:1, episode_count:8}]);
           setEpisodes(Array.from({length:8}, (_,i) => ({id:i+1, episode_number:i+1, name:`Episode ${i+1}`, air_date:"2024-01-01"})));
-          const nt = {...epTotals, [id]:8}; setEpTotals(nt); LS.set(SK.EP, nt);
+          const nt = {...epTotals, [id]:8}; setEpTotals(nt); upsertEpTotal(id, 8);
         }
       }
       if (!cancelled) setLoading(false);
@@ -73,10 +74,21 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
     } catch { setEpisodes([]); }
   };
 
-  const toggleW = () => { const w = {...watched}; if (w[wk]) delete w[wk]; else w[wk] = {id, type: item.media_type, name, poster_path: item.poster_path, genre_ids: item.genre_ids || [], vote_average: detail?.vote_average || item.vote_average || 0, watchedAt: Date.now()}; setWatched(w); LS.set(SK.W, w); };
-  const toggleEp = ep => { const newK = `ep_show${id}_s${ep.season_number}e${ep.episode_number}`; const oldK = `ep_show${id}_ep${ep.id}`; const w = {...watched}; const was = !!(w[newK] || w[oldK]); if (was) { delete w[newK]; delete w[oldK]; } else w[newK] = {epId: ep.id, showId: id, watchedAt: Date.now()}; setWatched(w); LS.set(SK.W, w); if (!was) { const tot = epTotals[id] || 0; const nc = Object.keys(w).filter(x => x.startsWith(`ep_show${id}_`)).length; if (tot > 0 && nc >= tot) onFinish(name); } };
-  const setRate = s => { const r = {...ratings, [wk]: s}; setRatings(r); LS.set(SK.R, r); };
-  const handleCloseComments = () => { setCommentCounts(LS.get(SK.C, {})); setCommentEp(null); };
+  const toggleW = () => {
+    const w = {...watched};
+    if (w[wk]) { delete w[wk]; setWatched(w); deleteWatchedItem(user.id, wk); }
+    else { const entry = {id, type: item.media_type, name, poster_path: item.poster_path, genre_ids: item.genre_ids || [], vote_average: detail?.vote_average || item.vote_average || 0, watchedAt: Date.now()}; w[wk] = entry; setWatched(w); upsertWatchedItem(user.id, wk, entry); }
+  };
+
+  const toggleEp = ep => {
+    const newK = `ep_show${id}_s${ep.season_number}e${ep.episode_number}`; const oldK = `ep_show${id}_ep${ep.id}`;
+    const w = {...watched}; const was = !!(w[newK] || w[oldK]);
+    if (was) { delete w[newK]; delete w[oldK]; setWatched(w); deleteWatchedEpisode(user.id, newK); deleteWatchedEpisode(user.id, oldK); }
+    else { const entry = {epId: ep.id, showId: id, watchedAt: Date.now()}; w[newK] = entry; setWatched(w); upsertWatchedEpisode(user.id, newK, entry); const tot = epTotals[id] || 0; const nc = Object.keys(w).filter(x => x.startsWith(`ep_show${id}_`)).length; if (tot > 0 && nc >= tot) onFinish(name); }
+  };
+
+  const setRate = s => { const r = {...ratings, [wk]: s}; setRatings(r); upsertRating(user.id, wk, s); };
+  const handleCloseComments = (updatedComments) => { if (commentEp) setCommentCounts(prev => ({...prev, [`show${id}_ep${commentEp.id}`]: updatedComments || []})); setCommentEp(null); };
 
   return (
     <>

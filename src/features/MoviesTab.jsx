@@ -6,11 +6,11 @@ import PosterCard from "../components/PosterCard.jsx";
 
 const SORT_OPTS = [{k:"watched",l:"Recent"},{k:"az",l:"A–Z"},{k:"rating",l:"Rating"},{k:"added",l:"Added"}];
 
-export default function MoviesTab({watched, watchlist, setWatchlist, ratings, onSelect}) {
+export default function MoviesTab({watched, watchlist, setWatchlist, ratings, onSelect, user}) {
   const [tab, setTab] = useState("watched");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("watched");
-  const toggleWL = useWatchlistToggle(watchlist, setWatchlist);
+  const toggleWL = useWatchlistToggle(watchlist, setWatchlist, user.id);
 
   const applySearch = (items, q) => { if (!q.trim()) return items; const lq = q.toLowerCase(); return items.filter(x => (x.name || x.title || "").toLowerCase().includes(lq)); };
   const applySort = (items, s) => { const r = [...items]; if (s === "az") r.sort((a,b) => (a.name||a.title||"").localeCompare(b.name||b.title||"")); else if (s === "rating") { const score = x => ratings[`${x.type||x.media_type}_${x.id}`] || (x.vote_average ? x.vote_average/2 : 0); r.sort((a,b) => score(b)-score(a)); } else if (s === "watched") r.sort((a,b) => (b.watchedAt||0)-(a.watchedAt||0)); else if (s === "added") r.sort((a,b) => (b.addedAt||0)-(a.addedAt||0)); return r; };
