@@ -17,6 +17,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
   const [episodes, setEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [commentEp, setCommentEp] = useState(null);
+  const [commentCounts, setCommentCounts] = useState(() => LS.get(SK.C, {}));
   const [ratingHover, setRatingHover] = useState(0);
   const loadAbortRef = useRef(null);
 
@@ -74,6 +75,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
   const toggleW = () => { const w = {...watched}; if (w[wk]) delete w[wk]; else w[wk] = {id, type: item.media_type, name, poster_path: item.poster_path, genre_ids: item.genre_ids || [], watchedAt: Date.now()}; setWatched(w); LS.set(SK.W, w); };
   const toggleEp = ep => { const k = `ep_show${id}_ep${ep.id}`; const w = {...watched}; const was = !!w[k]; if (was) delete w[k]; else w[k] = {epId: ep.id, showId: id, watchedAt: Date.now()}; setWatched(w); LS.set(SK.W, w); if (!was) { const tot = epTotals[id] || 0; const nc = Object.keys(w).filter(x => x.startsWith(`ep_show${id}_`)).length; if (tot > 0 && nc >= tot) onFinish(name); } };
   const setRate = s => { const r = {...ratings, [wk]: s}; setRatings(r); LS.set(SK.R, r); };
+  const handleCloseComments = () => { setCommentCounts(LS.get(SK.C, {})); setCommentEp(null); };
 
   return (
     <>
@@ -117,7 +119,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
               )}
 
               <div style={{display:"flex", gap:10, marginBottom:24}}>
-                <button onClick={toggleW} style={{flex:1, padding:"11px 0", background: isW ? G.green : G.accent, color:"#000", borderRadius:10, fontSize:14, fontWeight:700, border:"none"}}>
+                <button onClick={toggleW} style={{flex:1, padding:"11px 0", background: isW ? G.success : G.accent, color:"#000", borderRadius:10, fontSize:14, fontWeight:700, border:"none"}}>
                   {isW ? "✓ Watched" : "Mark as Watched"}
                 </button>
                 <button onClick={() => toggleWL(item)} style={{width:48, height:44, borderRadius:10, border:`1px solid ${inWL ? G.accent : G.border2}`, background: inWL ? G.accentDim : "transparent", fontSize:20, color: inWL ? G.accent : G.muted}}>
@@ -150,14 +152,14 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
                       </button>
                     ))}
                   </div>
-                  {episodes.map(ep => <EpisodeRow key={ep.id} ep={ep} showId={id} watched={watched} onToggle={toggleEp} onOpenComments={setCommentEp}/>)}
+                  {episodes.map(ep => <EpisodeRow key={ep.id} ep={ep} showId={id} watched={watched} onToggle={toggleEp} onOpenComments={setCommentEp} commentCount={commentCounts[`show${id}_ep${ep.id}`]?.length || 0}/>)}
                 </div>
               )}
             </div>
           )}
         </div>
       </div>
-      {commentEp && <CommentsSheet showId={id} ep={commentEp} user={user} onClose={() => setCommentEp(null)}/>}
+      {commentEp && <CommentsSheet showId={id} ep={commentEp} user={user} onClose={handleCloseComments}/>}
     </>
   );
 }

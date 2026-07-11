@@ -42,7 +42,7 @@ export default function Importer({onClose, watched, setWatched, watchlist, setWa
         {stage === "preview" && preview && (
           <div>
             <div style={{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:16}}>
-              {[{l:"TV Shows",v:preview.shows.length,c:G.blue},{l:"Movies",v:preview.movies.length,c:G.accent},{l:"Episodes",v:preview.episodeCount.toLocaleString(),c:G.green}].map(s => (
+              {[{l:"TV Shows",v:preview.shows.length,c:G.blue},{l:"Movies",v:preview.movies.length,c:G.accent},{l:"Episodes",v:preview.episodeCount.toLocaleString(),c:G.success}].map(s => (
                 <div key={s.l} style={{background:G.bg, borderRadius:10, padding:"12px", textAlign:"center"}}>
                   <div style={{fontSize:22, fontWeight:700, color:s.c}}>{s.v}</div>
                   <div style={{fontSize:11, color:G.muted, marginTop:2}}>{s.l}</div>

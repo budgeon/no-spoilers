@@ -1,6 +1,5 @@
 import { useState, lazy, Suspense } from "react";
 import { G } from "./constants/tokens.js";
-import { CSS } from "./constants/css.js";
 import { TABS } from "./constants/tabs.js";
 import { LS, SK } from "./constants/storage.js";
 import { hasKey } from "./constants/api.js";
@@ -32,19 +31,15 @@ export default function App() {
   const handleSelect=item=>{ setSelected(item); const r=LS.get(SK.REC,[]); LS.set(SK.REC,[{...item,viewedAt:Date.now()},...r.filter(x=>!(x.id===item.id&&x.media_type===item.media_type))].slice(0,12)); };
 
   if(!user) return (
-    <>
-      <style>{CSS}</style>
-      <Suspense fallback={<Center py={200}><Spinner/></Center>}>
-        <AuthScreen onAuth={u=>setUser(u)}/>
-      </Suspense>
-    </>
+    <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+      <AuthScreen onAuth={u=>setUser(u)}/>
+    </Suspense>
   );
 
   const sharedProps={watched,setWatched,watchlist,setWatchlist,ratings,setRatings,epTotals,setEpTotals,onSelect:handleSelect,onFinish:n=>{setConfetti(n);},user};
 
   return (
     <>
-      <style>{CSS}</style>
       {confetti&&(
         <>
           <Confetti onDone={()=>setConfetti(null)}/>

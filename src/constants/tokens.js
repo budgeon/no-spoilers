@@ -9,7 +9,7 @@ export const G = {
   dim:      "rgba(30,37,53,0.28)",
   accent:   "#6B8CAE",
   accentDim:"rgba(107,140,174,0.12)",
-  green:    "#5A7A9E",
+  success:  "#5A7A9E",
   red:      "#B85450",
   blue:     "#8AAAC8",
   tabBar:   "#EDE7D8",
