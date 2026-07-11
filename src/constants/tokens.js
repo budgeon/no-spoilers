@@ -1,0 +1,17 @@
+export const G = {
+  bg:       "#F5F0E8",
+  surface:  "#FDFAF4",
+  surface2: "#EFE9DC",
+  border:   "rgba(80,100,130,0.12)",
+  border2:  "rgba(80,100,130,0.22)",
+  text:     "#1E2535",
+  muted:    "rgba(30,37,53,0.5)",
+  dim:      "rgba(30,37,53,0.28)",
+  accent:   "#6B8CAE",
+  accentDim:"rgba(107,140,174,0.12)",
+  green:    "#5A7A9E",
+  red:      "#B85450",
+  blue:     "#8AAAC8",
+  tabBar:   "#EDE7D8",
+  MAX_W:    680,
+};
