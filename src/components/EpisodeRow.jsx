@@ -1,8 +1,9 @@
 import { memo } from "react";
 
 export default memo(function EpisodeRow({ep, showId, watched, onToggle, onOpenComments, commentCount = 0}) {
-  const key = `ep_show${showId}_ep${ep.id}`;
-  const ew = !!watched[key];
+  const newKey = `ep_show${showId}_s${ep.season_number}e${ep.episode_number}`;
+  const oldKey = `ep_show${showId}_ep${ep.id}`;
+  const ew = !!(watched[newKey] || watched[oldKey]);
   return (
     <div className="episode-row">
       <button onClick={() => onToggle(ep)} className={`episode-check${ew ? " watched" : ""}`}>✓</button>

@@ -89,7 +89,7 @@ export default function App() {
       )}
       {showImporter&&(
         <Suspense fallback={null}>
-          <Importer onClose={()=>setShowImporter(false)} watched={watched} setWatched={setWatched} watchlist={watchlist} setWatchlist={setWatchlist}/>
+          <Importer onClose={()=>setShowImporter(false)} watched={watched} setWatched={setWatched} watchlist={watchlist} setWatchlist={setWatchlist} epTotals={epTotals} setEpTotals={setEpTotals}/>
         </Suspense>
       )}
     </>
