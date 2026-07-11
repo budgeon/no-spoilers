@@ -8,7 +8,7 @@ import Center from "../components/Center.jsx";
 import Spinner from "../components/Spinner.jsx";
 import PosterCard from "../components/PosterCard.jsx";
 
-export default function DiscoverTab({watched, watchlist, setWatchlist, onSelect}) {
+export default function DiscoverTab({watched, watchlist, setWatchlist, onSelect, user}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -16,7 +16,7 @@ export default function DiscoverTab({watched, watchlist, setWatchlist, onSelect}
   const [genre, setGenre] = useState(null);
   const searchAc = useRef(null);
 
-  const toggleWL = useWatchlistToggle(watchlist, setWatchlist);
+  const toggleWL = useWatchlistToggle(watchlist, setWatchlist, user.id);
 
   const { data: rawTrending } = useTMDB(
     async (signal) => {

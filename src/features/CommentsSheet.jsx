@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { G } from "../constants/tokens.js";
-import { LS, SK } from "../constants/storage.js";
 import { REACTIONS } from "../constants/mockData.js";
+import { loadComments, postComment, deleteComment, toggleCommentLike } from "../lib/db.js";
 import Center from "../components/Center.jsx";
 import Pill from "../components/Pill.jsx";
 import Spinner from "../components/Spinner.jsx";
@@ -9,23 +9,46 @@ import Spinner from "../components/Spinner.jsx";
 const timeAgo = ts => { const s = Math.floor((Date.now()-ts)/1000); if (s < 60) return "just now"; if (s < 3600) return `${Math.floor(s/60)}m`; if (s < 86400) return `${Math.floor(s/3600)}h`; return `${Math.floor(s/86400)}d`; };
 
 export default function CommentsSheet({showId, ep, user, onClose}) {
-  const key = `show${showId}_ep${ep.id}`;
-  const [comments, setComments] = useState(() => LS.get(SK.C, {})[key] || []);
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [reaction, setReaction] = useState(null);
   const [spoiler, setSpoiler] = useState(false);
   const [revealed, setRevealed] = useState({});
 
-  const save = updated => { const all = LS.get(SK.C, {}); all[key] = updated; LS.set(SK.C, all); setComments(updated); };
-  const submit = () => {
-    if (!text.trim() && !reaction) return;
-    save([...comments, {id: Date.now(), userId: user.id, userName: user.name, avatar: user.avatar, text: text.trim(), reaction, spoiler, likes: 0, likedBy: [], createdAt: Date.now()}]);
-    setText(""); setReaction(null); setSpoiler(false);
+  const refresh = async () => {
+    const data = await loadComments(showId, ep.id);
+    setComments(data);
+    return data;
   };
-  const toggleLike = id => save(comments.map(c => c.id !== id ? c : {...c, likes: c.likedBy.includes(user.id) ? c.likes-1 : c.likes+1, likedBy: c.likedBy.includes(user.id) ? c.likedBy.filter(x => x !== user.id) : [...c.likedBy, user.id]}));
+
+  useEffect(() => {
+    setLoading(true);
+    refresh().then(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showId, ep.id]);
+
+  const submit = async () => {
+    if (!text.trim() && !reaction) return;
+    await postComment(user.id, showId, ep.id, { text: text.trim(), reaction, spoiler });
+    setText(""); setReaction(null); setSpoiler(false);
+    await refresh();
+  };
+
+  const handleLike = async (c) => {
+    const newLikedBy = await toggleCommentLike(c.id, user.id, c.likedBy);
+    setComments(prev => prev.map(x => x.id !== c.id ? x : {...x, likedBy: newLikedBy, likes: newLikedBy.length}));
+  };
+
+  const handleDelete = async (id) => {
+    await deleteComment(id);
+    setComments(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleClose = () => onClose(comments);
 
   return (
-    <div className="overlay overlay-comments" onClick={onClose}>
+    <div className="overlay overlay-comments" onClick={handleClose}>
       <div className="sheet sheet-comments" onClick={e => e.stopPropagation()}>
         <div style={{display:"flex", flexDirection:"column", alignItems:"center", padding:"12px 20px 0"}}>
           <div className="sheet-handle"/>
@@ -34,42 +57,44 @@ export default function CommentsSheet({showId, ep, user, onClose}) {
               <div style={{fontSize:13, fontWeight:600, color:G.text}}>E{ep.episode_number} · {ep.name}</div>
               <div style={{fontSize:11, color:G.muted, marginTop:2}}>{comments.length} comments</div>
             </div>
-            <button onClick={onClose} style={{color:G.muted, fontSize:18, padding:4}}>✕</button>
+            <button onClick={handleClose} style={{color:G.muted, fontSize:18, padding:4}}>✕</button>
           </div>
         </div>
 
         <div style={{flex:1, overflowY:"auto", padding:"12px 20px"}}>
-          {comments.length === 0
-            ? <Center><div style={{textAlign:"center", color:G.dim, fontSize:13}}>No comments yet.<br/>Be the first to react!</div></Center>
-            : [...comments].sort((a,b) => b.createdAt-a.createdAt).map(c => {
-                const isOwn = c.userId === user.id;
-                const liked = c.likedBy.includes(user.id);
-                return (
-                  <div key={c.id} style={{display:"flex", gap:10, marginBottom:16}}>
-                    <div className="avatar avatar-md">{c.avatar}</div>
-                    <div style={{flex:1}}>
-                      <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap"}}>
-                        <span style={{fontSize:13, fontWeight:600}}>{c.userName}</span>
-                        {c.reaction && <span style={{fontSize:16}}>{c.reaction}</span>}
-                        <span style={{fontSize:11, color:G.dim}}>{timeAgo(c.createdAt)}</span>
-                        {c.spoiler && <Pill label="SPOILER"/>}
-                      </div>
-                      {c.text && (
-                        <div style={{position:"relative"}}>
-                          <div style={{fontSize:13, color:G.muted, lineHeight:1.5, filter: c.spoiler && !revealed[c.id] ? "blur(6px)" : "none", transition:"filter 0.2s"}}>{c.text}</div>
-                          {c.spoiler && !revealed[c.id] && <button onClick={() => setRevealed(r => ({...r, [c.id]: true}))} style={{position:"absolute", inset:0, width:"100%", background:"transparent", border:"none", cursor:"pointer", fontSize:12, color:G.accent, fontWeight:600}}>Tap to reveal spoiler</button>}
+          {loading
+            ? <Center><Spinner/></Center>
+            : comments.length === 0
+              ? <Center><div style={{textAlign:"center", color:G.dim, fontSize:13}}>No comments yet.<br/>Be the first to react!</div></Center>
+              : comments.map(c => {
+                  const isOwn = c.userId === user.id;
+                  const liked = c.likedBy.includes(user.id);
+                  return (
+                    <div key={c.id} style={{display:"flex", gap:10, marginBottom:16}}>
+                      <div className="avatar avatar-md">{c.avatar}</div>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap"}}>
+                          <span style={{fontSize:13, fontWeight:600}}>{c.userName}</span>
+                          {c.reaction && <span style={{fontSize:16}}>{c.reaction}</span>}
+                          <span style={{fontSize:11, color:G.dim}}>{timeAgo(c.createdAt)}</span>
+                          {c.spoiler && <Pill label="SPOILER"/>}
                         </div>
-                      )}
-                      <div style={{display:"flex", gap:12, marginTop:6}}>
-                        <button onClick={() => toggleLike(c.id)} style={{fontSize:12, color: liked ? G.accent : G.dim, display:"flex", alignItems:"center", gap:4}}>
-                          {liked ? "♥" : "♡"}{c.likes > 0 && ` ${c.likes}`}
-                        </button>
-                        {isOwn && <button onClick={() => save(comments.filter(x => x.id !== c.id))} style={{fontSize:12, color:G.dim}}>Delete</button>}
+                        {c.text && (
+                          <div style={{position:"relative"}}>
+                            <div style={{fontSize:13, color:G.muted, lineHeight:1.5, filter: c.spoiler && !revealed[c.id] ? "blur(6px)" : "none", transition:"filter 0.2s"}}>{c.text}</div>
+                            {c.spoiler && !revealed[c.id] && <button onClick={() => setRevealed(r => ({...r, [c.id]: true}))} style={{position:"absolute", inset:0, width:"100%", background:"transparent", border:"none", cursor:"pointer", fontSize:12, color:G.accent, fontWeight:600}}>Tap to reveal spoiler</button>}
+                          </div>
+                        )}
+                        <div style={{display:"flex", gap:12, marginTop:6}}>
+                          <button onClick={() => handleLike(c)} style={{fontSize:12, color: liked ? G.accent : G.dim, display:"flex", alignItems:"center", gap:4}}>
+                            {liked ? "♥" : "♡"}{c.likes > 0 && ` ${c.likes}`}
+                          </button>
+                          {isOwn && <button onClick={() => handleDelete(c.id)} style={{fontSize:12, color:G.dim}}>Delete</button>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })
           }
         </div>
 
