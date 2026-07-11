@@ -5,6 +5,7 @@ import { LS, SK } from "./constants/storage.js";
 import { hasKey } from "./constants/api.js";
 import { Auth } from "./auth/Auth.js";
 import { fetchProfile, loadUserData, migrateLocalStorage } from "./lib/db.js";
+import { supabase } from "./lib/supabase.js";
 import ShowsTab from "./features/ShowsTab.jsx";
 import MoviesTab from "./features/MoviesTab.jsx";
 import DiscoverTab from "./features/DiscoverTab.jsx";
@@ -32,9 +33,15 @@ export default function App() {
 
   useEffect(() => {
     const { data: { subscription } } = Auth.onAuthChange(async (event, session) => {
+      if (event === "TOKEN_REFRESHED") return;
       if (session?.user) {
         await migrateLocalStorage(session.user.id);
-        const [profile, data] = await Promise.all([fetchProfile(session.user.id), loadUserData(session.user.id)]);
+        let profile = await fetchProfile(session.user.id);
+        if (!profile) {
+          await supabase.from("profiles").insert({ id: session.user.id, name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "User", avatar: session.user.user_metadata?.avatar || "🎬" });
+          profile = await fetchProfile(session.user.id);
+        }
+        const data = await loadUserData(session.user.id);
         setWatched(data.watched); setWatchlist(data.watchlist); setRatings(data.ratings); setEpTotals(data.epTotals);
         setUser(profile);
       } else {

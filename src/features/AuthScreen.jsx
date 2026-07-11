@@ -10,8 +10,20 @@ export default function AuthScreen() {
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [err, setErr] = useState("");
+  const [confirmSent, setConfirmSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
+
+  const friendlyError = (error) => {
+    const msg = error?.message || "";
+    const code = error?.code || "";
+    if (code === "invalid_credentials" || msg.includes("Invalid login credentials")) return "Incorrect email or password.";
+    if (code === "user_already_exists" || msg.includes("already registered") || msg.includes("already exists")) return "An account with this email already exists. Sign in instead?";
+    if (msg.includes("Email not confirmed")) return "Please confirm your email before signing in.";
+    if (msg.includes("Password should be")) return "Password must be at least 6 characters.";
+    if (msg.includes("Unable to validate email")) return "Please enter a valid email address.";
+    return msg || "Something went wrong. Please try again.";
+  };
 
   const submit = async () => {
     setErr("");
@@ -19,14 +31,33 @@ export default function AuthScreen() {
     if (mode === "signup" && !name.trim()) { setErr("Please enter your name."); return; }
     if (pw.length < 6) { setErr("Password must be 6+ characters."); return; }
     setLoading(true);
-    const { error } = mode === "signup"
+    const { data, error } = mode === "signup"
       ? await Auth.signup(email.trim().toLowerCase(), name.trim(), pw)
       : await Auth.login(email.trim().toLowerCase(), pw);
     setLoading(false);
-    if (error) setErr(error.message);
+    if (error) {
+      setErr(friendlyError(error));
+      if (error.code === "user_already_exists" || error.message?.includes("already registered")) setMode("login");
+    } else if (mode === "signup" && data?.user?.identities?.length === 0) {
+      setErr("This email is already registered. Try signing in instead.");
+      setMode("login");
+    } else if (mode === "signup" && data?.session === null) {
+      setConfirmSent(true);
+    }
   };
 
   const handleGoogle = () => { setGLoading(true); Auth.google(); };
+
+  if (confirmSent) return (
+    <div style={{minHeight:"100vh", background:G.bg, display:"flex", alignItems:"center", justifyContent:"center", padding:24}}>
+      <div style={{textAlign:"center", maxWidth:360}}>
+        <div style={{fontSize:48, marginBottom:16}}>📬</div>
+        <div style={{fontSize:20, fontWeight:700, color:G.text, marginBottom:8}}>Check your email</div>
+        <div style={{fontSize:13, color:G.muted, lineHeight:1.6, marginBottom:24}}>We sent a confirmation link to <strong style={{color:G.text}}>{email}</strong>. Click it to activate your account, then come back and sign in.</div>
+        <button onClick={() => { setConfirmSent(false); setMode("login"); }} style={{padding:"10px 24px", background:G.accent, color:"#000", borderRadius:10, fontSize:13, fontWeight:700, border:"none"}}>Back to Sign In</button>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{minHeight:"100vh", background:G.bg, display:"flex", alignItems:"center", justifyContent:"center", padding:24}}>
