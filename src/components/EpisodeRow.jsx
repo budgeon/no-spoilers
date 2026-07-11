@@ -1,6 +1,7 @@
+import { memo } from "react";
 import { LS, SK } from "../constants/storage.js";
 
-export default function EpisodeRow({ep, showId, watched, onToggle, onOpenComments}) {
+export default memo(function EpisodeRow({ep, showId, watched, onToggle, onOpenComments}) {
   const key = `ep_show${showId}_ep${ep.id}`;
   const ew = !!watched[key];
   const commentCount = LS.get(SK.C, {})[`show${showId}_ep${ep.id}`]?.length || 0;
@@ -19,4 +20,4 @@ export default function EpisodeRow({ep, showId, watched, onToggle, onOpenComment
       <button onClick={() => onOpenComments(ep)} className="episode-discuss">Discuss</button>
     </div>
   );
-}
+});

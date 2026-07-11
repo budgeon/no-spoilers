@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { G } from "./constants/tokens.js";
 import { CSS } from "./constants/css.js";
 import { TABS } from "./constants/tabs.js";
@@ -9,10 +9,14 @@ import ShowsTab from "./features/ShowsTab.jsx";
 import MoviesTab from "./features/MoviesTab.jsx";
 import DiscoverTab from "./features/DiscoverTab.jsx";
 import ProfileTab from "./features/ProfileTab.jsx";
-import DetailSheet from "./features/DetailSheet.jsx";
 import Confetti from "./features/Confetti.jsx";
-import Importer from "./features/Importer.jsx";
-import AuthScreen from "./features/AuthScreen.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import Center from "./components/Center.jsx";
+import Spinner from "./components/Spinner.jsx";
+
+const DetailSheet = lazy(() => import("./features/DetailSheet.jsx"));
+const Importer    = lazy(() => import("./features/Importer.jsx"));
+const AuthScreen  = lazy(() => import("./features/AuthScreen.jsx"));
 
 export default function App() {
   const [tab,setTab]=useState("shows");
@@ -27,7 +31,14 @@ export default function App() {
 
   const handleSelect=item=>{ setSelected(item); const r=LS.get(SK.REC,[]); LS.set(SK.REC,[{...item,viewedAt:Date.now()},...r.filter(x=>!(x.id===item.id&&x.media_type===item.media_type))].slice(0,12)); };
 
-  if(!user) return (<><style>{CSS}</style><AuthScreen onAuth={u=>setUser(u)}/></>);
+  if(!user) return (
+    <>
+      <style>{CSS}</style>
+      <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+        <AuthScreen onAuth={u=>setUser(u)}/>
+      </Suspense>
+    </>
+  );
 
   const sharedProps={watched,setWatched,watchlist,setWatchlist,ratings,setRatings,epTotals,setEpTotals,onSelect:handleSelect,onFinish:n=>{setConfetti(n);},user};
 
@@ -56,10 +67,12 @@ export default function App() {
         </div>
 
         <div style={{padding:"16px 16px 90px"}}>
-          {tab==="shows"&&<ShowsTab {...sharedProps}/>}
-          {tab==="movies"&&<MoviesTab {...sharedProps}/>}
-          {tab==="discover"&&<DiscoverTab watched={watched} watchlist={watchlist} setWatchlist={setWatchlist} onSelect={handleSelect}/>}
-          {tab==="profile"&&<ProfileTab user={user} watched={watched} ratings={ratings} watchlist={watchlist} epTotals={epTotals} onLogout={()=>{Auth.logout();setUser(null);}} onImport={()=>setShowImporter(true)}/>}
+          <ErrorBoundary>
+            {tab==="shows"&&<ShowsTab {...sharedProps}/>}
+            {tab==="movies"&&<MoviesTab {...sharedProps}/>}
+            {tab==="discover"&&<DiscoverTab watched={watched} watchlist={watchlist} setWatchlist={setWatchlist} onSelect={handleSelect}/>}
+            {tab==="profile"&&<ProfileTab user={user} watched={watched} ratings={ratings} watchlist={watchlist} epTotals={epTotals} onLogout={()=>{Auth.logout();setUser(null);}} onImport={()=>setShowImporter(true)}/>}
+          </ErrorBoundary>
         </div>
 
         <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:G.MAX_W,background:G.tabBar,borderTop:`1px solid ${G.border}`,display:"flex",zIndex:50}}>
@@ -72,8 +85,18 @@ export default function App() {
         </div>
       </div>
 
-      {selected&&<DetailSheet item={selected} onClose={()=>setSelected(null)} watched={watched} setWatched={setWatched} watchlist={watchlist} setWatchlist={setWatchlist} ratings={ratings} setRatings={setRatings} epTotals={epTotals} setEpTotals={setEpTotals} onFinish={n=>setConfetti(n)} user={user}/>}
-      {showImporter&&<Importer onClose={()=>setShowImporter(false)} watched={watched} setWatched={setWatched} watchlist={watchlist} setWatchlist={setWatchlist}/>}
+      {selected&&(
+        <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+          <ErrorBoundary>
+            <DetailSheet item={selected} onClose={()=>setSelected(null)} watched={watched} setWatched={setWatched} watchlist={watchlist} setWatchlist={setWatchlist} ratings={ratings} setRatings={setRatings} epTotals={epTotals} setEpTotals={setEpTotals} onFinish={n=>setConfetti(n)} user={user}/>
+          </ErrorBoundary>
+        </Suspense>
+      )}
+      {showImporter&&(
+        <Suspense fallback={null}>
+          <Importer onClose={()=>setShowImporter(false)} watched={watched} setWatched={setWatched} watchlist={watchlist} setWatchlist={setWatchlist}/>
+        </Suspense>
+      )}
     </>
   );
 }

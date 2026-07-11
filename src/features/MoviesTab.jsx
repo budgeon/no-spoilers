@@ -1,15 +1,23 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { G } from "../constants/tokens.js";
-import { LS, SK } from "../constants/storage.js";
+import { useWatchlistToggle } from "../hooks/useWatchlistToggle.js";
 import Center from "../components/Center.jsx";
 import PosterCard from "../components/PosterCard.jsx";
 
 export default function MoviesTab({watched, watchlist, setWatchlist, onSelect}) {
   const [tab, setTab] = useState("watched");
-  const watchedMovies = Object.entries(watched).filter(([k]) => !k.startsWith("ep_") && watched[k]?.type === "movie").map(([,v]) => v);
-  const wlMovies = Object.values(watchlist).filter(x => x.type === "movie");
+  const toggleWL = useWatchlistToggle(watchlist, setWatchlist);
+
+  const watchedMovies = useMemo(
+    () => Object.entries(watched).filter(([k]) => !k.startsWith("ep_") && watched[k]?.type === "movie").map(([,v]) => v),
+    [watched]
+  );
+  const wlMovies = useMemo(
+    () => Object.values(watchlist).filter(x => x.type === "movie"),
+    [watchlist]
+  );
+
   const display = tab === "watched" ? watchedMovies : wlMovies.map(x => ({...x, ...x.item, id: x.id}));
-  const toggleWL = item => { const k = `movie_${item.id}`; const w = {...watchlist}; if (w[k]) delete w[k]; else w[k] = {id: item.id, type: "movie", name: item.title || item.name, poster_path: item.poster_path, addedAt: Date.now(), item: {...item, media_type: "movie"}}; setWatchlist(w); LS.set(SK.WL, w); };
 
   return (
     <div>
@@ -23,7 +31,7 @@ export default function MoviesTab({watched, watchlist, setWatchlist, onSelect}) 
         : <div className="poster-grid">
             {display.map(item => {
               const mi = {...item, media_type: "movie"};
-              return <PosterCard key={item.id} item={mi} onClick={() => onSelect(mi)} epProgress={null} watched={!!watched[`movie_${item.id}`]} inWL={!!watchlist[`movie_${item.id}`]} onWL={() => toggleWL(item)}/>;
+              return <PosterCard key={item.id} item={mi} onClick={() => onSelect(mi)} epProgress={null} watched={!!watched[`movie_${item.id}`]} inWL={!!watchlist[`movie_${item.id}`]} onWL={() => toggleWL(mi)}/>;
             })}
           </div>
       }

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { G } from "../constants/tokens.js";
 import { LS, SK } from "../constants/storage.js";
 import { tmdb, TMDB_IMG, hasKey } from "../constants/api.js";
+import { useWatchlistToggle } from "../hooks/useWatchlistToggle.js";
 import Center from "../components/Center.jsx";
 import Spinner from "../components/Spinner.jsx";
 import Pill from "../components/Pill.jsx";
@@ -17,29 +18,62 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
   const [loading, setLoading] = useState(true);
   const [commentEp, setCommentEp] = useState(null);
   const [ratingHover, setRatingHover] = useState(0);
+  const loadAbortRef = useRef(null);
 
   const isTV = item.media_type === "tv"; const id = item.id; const name = item.name || item.title;
   const wk = `${item.media_type}_${id}`; const isW = !!watched[wk]; const rating = ratings[wk] || 0; const inWL = !!watchlist[wk];
   const watchedEps = Object.keys(watched).filter(k => k.startsWith(`ep_show${id}_`)).length;
   const totalEps = epTotals[id] || 0;
 
+  const toggleWL = useWatchlistToggle(watchlist, setWatchlist);
+
   useEffect(() => {
+    let cancelled = false;
+    const ac = new AbortController();
     (async () => {
       setLoading(true);
       try {
-        if (hasKey()) { const d = await tmdb(`/${isTV ? "tv" : "movie"}/${id}`); setDetail(d);
-          if (isTV && d.seasons) { const r = d.seasons.filter(s => s.season_number > 0); setSeasons(r); const t = r.reduce((a,s) => a+s.episode_count, 0); if (t > 0) { const nt = {...epTotals, [id]: t}; setEpTotals(nt); LS.set(SK.EP, nt); } if (r.length) loadEps(r[0].season_number); }
+        if (hasKey()) {
+          const d = await tmdb(`/${isTV ? "tv" : "movie"}/${id}`, {}, ac.signal);
+          if (cancelled) return;
+          setDetail(d);
+          if (isTV && d.seasons) {
+            const r = d.seasons.filter(s => s.season_number > 0);
+            setSeasons(r);
+            const t = r.reduce((a,s) => a+s.episode_count, 0);
+            if (t > 0) { const nt = {...epTotals, [id]: t}; setEpTotals(nt); LS.set(SK.EP, nt); }
+            if (r.length) loadEps(r[0].season_number);
+          }
         } else throw new Error();
-      } catch { setDetail(item); if (isTV) { setSeasons([{season_number:1, episode_count:8}]); setEpisodes(Array.from({length:8}, (_,i) => ({id:i+1, episode_number:i+1, name:`Episode ${i+1}`, air_date:"2024-01-01"}))); const nt = {...epTotals, [id]:8}; setEpTotals(nt); LS.set(SK.EP, nt); } }
-      setLoading(false);
+      } catch {
+        if (cancelled) return;
+        setDetail(item);
+        if (isTV) {
+          setSeasons([{season_number:1, episode_count:8}]);
+          setEpisodes(Array.from({length:8}, (_,i) => ({id:i+1, episode_number:i+1, name:`Episode ${i+1}`, air_date:"2024-01-01"})));
+          const nt = {...epTotals, [id]:8}; setEpTotals(nt); LS.set(SK.EP, nt);
+        }
+      }
+      if (!cancelled) setLoading(false);
     })();
+    return () => { cancelled = true; ac.abort(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const loadEps = async n => { setActiveSeason(n); if (!hasKey()) return; try { const s = await tmdb(`/tv/${id}/season/${n}`); setEpisodes(s.episodes || []); } catch { setEpisodes([]); } };
+  const loadEps = async n => {
+    setActiveSeason(n);
+    if (!hasKey()) return;
+    if (loadAbortRef.current) loadAbortRef.current.abort();
+    loadAbortRef.current = new AbortController();
+    try {
+      const s = await tmdb(`/tv/${id}/season/${n}`, {}, loadAbortRef.current.signal);
+      setEpisodes(s.episodes || []);
+    } catch { setEpisodes([]); }
+  };
+
   const toggleW = () => { const w = {...watched}; if (w[wk]) delete w[wk]; else w[wk] = {id, type: item.media_type, name, poster_path: item.poster_path, genre_ids: item.genre_ids || [], watchedAt: Date.now()}; setWatched(w); LS.set(SK.W, w); };
   const toggleEp = ep => { const k = `ep_show${id}_ep${ep.id}`; const w = {...watched}; const was = !!w[k]; if (was) delete w[k]; else w[k] = {epId: ep.id, showId: id, watchedAt: Date.now()}; setWatched(w); LS.set(SK.W, w); if (!was) { const tot = epTotals[id] || 0; const nc = Object.keys(w).filter(x => x.startsWith(`ep_show${id}_`)).length; if (tot > 0 && nc >= tot) onFinish(name); } };
   const setRate = s => { const r = {...ratings, [wk]: s}; setRatings(r); LS.set(SK.R, r); };
-  const toggleWL = () => { const w = {...watchlist}; if (w[wk]) delete w[wk]; else w[wk] = {id, type: item.media_type, name, poster_path: item.poster_path, addedAt: Date.now(), item}; setWatchlist(w); LS.set(SK.WL, w); };
 
   return (
     <>
@@ -86,7 +120,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
                 <button onClick={toggleW} style={{flex:1, padding:"11px 0", background: isW ? G.green : G.accent, color:"#000", borderRadius:10, fontSize:14, fontWeight:700, border:"none"}}>
                   {isW ? "✓ Watched" : "Mark as Watched"}
                 </button>
-                <button onClick={toggleWL} style={{width:48, height:44, borderRadius:10, border:`1px solid ${inWL ? G.accent : G.border2}`, background: inWL ? G.accentDim : "transparent", fontSize:20, color: inWL ? G.accent : G.muted}}>
+                <button onClick={() => toggleWL(item)} style={{width:48, height:44, borderRadius:10, border:`1px solid ${inWL ? G.accent : G.border2}`, background: inWL ? G.accentDim : "transparent", fontSize:20, color: inWL ? G.accent : G.muted}}>
                   {inWL ? "★" : "☆"}
                 </button>
               </div>

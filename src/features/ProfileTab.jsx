@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { G } from "../constants/tokens.js";
 import { GENRE_MAP } from "../constants/mockData.js";
 import Center from "../components/Center.jsx";
@@ -14,17 +15,26 @@ function StatBox({label, value, sub}) {
 }
 
 export default function ProfileTab({user, watched, ratings, watchlist, epTotals, onLogout, onImport}) {
-  const titles = Object.entries(watched).filter(([k]) => !k.startsWith("ep_")).map(([,v]) => v).filter(Boolean);
-  const epCount = Object.keys(watched).filter(k => k.startsWith("ep_")).length;
-  const tvCount = titles.filter(t => t.type === "tv").length;
-  const mvCount = titles.filter(t => t.type === "movie").length;
-  const rv = Object.values(ratings).filter(Boolean);
-  const avg = rv.length ? (rv.reduce((a,b) => a+b, 0) / rv.length).toFixed(1) : null;
-  const daysWatched = ((epCount * 45) / 60 / 24).toFixed(1);
-
-  const genreCounts = {};
-  titles.forEach(t => (t.genre_ids || []).forEach(gid => { const n = GENRE_MAP[gid]; if (n) genreCounts[n] = (genreCounts[n] || 0) + 1; }));
-  const topGenres = Object.entries(genreCounts).sort((a,b) => b[1]-a[1]).slice(0,5);
+  const titles = useMemo(
+    () => Object.entries(watched).filter(([k]) => !k.startsWith("ep_")).map(([,v]) => v).filter(Boolean),
+    [watched]
+  );
+  const epCount = useMemo(
+    () => Object.keys(watched).filter(k => k.startsWith("ep_")).length,
+    [watched]
+  );
+  const tvCount = useMemo(() => titles.filter(t => t.type === "tv").length, [titles]);
+  const mvCount = useMemo(() => titles.filter(t => t.type === "movie").length, [titles]);
+  const avg = useMemo(() => {
+    const rv = Object.values(ratings).filter(Boolean);
+    return rv.length ? (rv.reduce((a,b) => a+b, 0) / rv.length).toFixed(1) : null;
+  }, [ratings]);
+  const daysWatched = useMemo(() => ((epCount * 45) / 60 / 24).toFixed(1), [epCount]);
+  const topGenres = useMemo(() => {
+    const genreCounts = {};
+    titles.forEach(t => (t.genre_ids || []).forEach(gid => { const n = GENRE_MAP[gid]; if (n) genreCounts[n] = (genreCounts[n] || 0) + 1; }));
+    return Object.entries(genreCounts).sort((a,b) => b[1]-a[1]).slice(0,5);
+  }, [titles]);
 
   return (
     <div>

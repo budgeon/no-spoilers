@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { TMDB_IMG } from "../constants/api.js";
 import ProgressBar from "./ProgressBar.jsx";
 
-export default function PosterCard({item, onClick, epProgress, watched, inWL, onWL}) {
+export default memo(function PosterCard({item, onClick, epProgress, watched, inWL, onWL}) {
   const name = item.name || item.title;
   const type = item.media_type;
   const hasProgress = epProgress && epProgress.total > 0;
@@ -26,4 +27,4 @@ export default function PosterCard({item, onClick, epProgress, watched, inWL, on
       </div>
     </div>
   );
-}
+});
