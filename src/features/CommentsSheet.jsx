@@ -54,7 +54,7 @@ export default function CommentsSheet({showId, ep, user, onClose}) {
           <div className="sheet-handle"/>
           <div style={{width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12, borderBottom:`1px solid ${G.border}`}}>
             <div>
-              <div style={{fontSize:13, fontWeight:600, color:G.text}}>E{ep.episode_number} · {ep.name}</div>
+              <div style={{fontSize:13, fontWeight:600, color:G.text}}>{ep.episode_number != null ? `E${ep.episode_number} · ${ep.name}` : ep.name}</div>
               <div style={{fontSize:11, color:G.muted, marginTop:2}}>{comments.length} comments</div>
             </div>
             <button onClick={handleClose} style={{color:G.muted, fontSize:18, padding:4}}>✕</button>

@@ -2,8 +2,8 @@ import { supabase } from "./supabase.js";
 import { LS, SK } from "../constants/storage.js";
 
 export async function fetchProfile(userId) {
-  const { data } = await supabase.from("profiles").select("id, name, avatar").eq("id", userId).single();
-  return data ? { id: data.id, name: data.name, avatar: data.avatar } : null;
+  const { data } = await supabase.from("profiles").select("id, name, avatar, created_at").eq("id", userId).single();
+  return data ? { id: data.id, name: data.name, avatar: data.avatar, joinedAt: data.created_at } : null;
 }
 
 export async function loadUserData(userId) {
@@ -15,7 +15,7 @@ export async function loadUserData(userId) {
     supabase.from("ep_totals").select("*"),
   ]);
   const watched = {};
-  wi.data?.forEach(row => { watched[row.item_key] = { id: row.item_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
+  wi.data?.forEach(row => { watched[row.item_key] = { id: row.item_id, tmdbId: row.tmdb_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
   we.data?.forEach(row => { watched[row.episode_key] = { epId: row.ep_tmdb_id, showId: row.show_id, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
   const watchlist = {};
   wl.data?.forEach(row => { watchlist[row.item_key] = { id: row.item_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, addedAt: new Date(row.added_at).getTime(), item: row.item_data, importedFrom: row.imported_from }; });
@@ -55,17 +55,23 @@ export async function upsertRating(userId, key, value) {
   await supabase.from("ratings").upsert({ user_id: userId, item_key: key, rating: value }, { onConflict: "user_id,item_key" });
 }
 
+export async function deleteRating(userId, key) {
+  await supabase.from("ratings").delete().eq("user_id", userId).eq("item_key", key);
+}
+
 export async function upsertEpTotal(showId, total) {
   await supabase.from("ep_totals").upsert({ show_id: String(showId), total_episodes: total, updated_at: new Date().toISOString() }, { onConflict: "show_id" });
 }
 
 export async function loadComments(showId, epTmdbId) {
-  const { data } = await supabase.from("comments").select("*, profiles(name, avatar)").eq("show_id", String(showId)).eq("ep_tmdb_id", epTmdbId).order("created_at", { ascending: false });
+  let q = supabase.from("comments").select("*, profiles(name, avatar)").eq("show_id", String(showId));
+  q = epTmdbId != null ? q.eq("ep_tmdb_id", epTmdbId) : q.is("ep_tmdb_id", null);
+  const { data } = await q.order("created_at", { ascending: false });
   return (data || []).map(c => ({ id: c.id, userId: c.user_id, userName: c.profiles?.name || "Unknown", avatar: c.profiles?.avatar || "🎬", text: c.text, reaction: c.reaction, spoiler: c.spoiler, likes: (c.liked_by || []).length, likedBy: c.liked_by || [], createdAt: new Date(c.created_at).getTime() }));
 }
 
 export async function postComment(userId, showId, epTmdbId, { text, reaction, spoiler }) {
-  await supabase.from("comments").insert({ user_id: userId, show_id: String(showId), ep_tmdb_id: epTmdbId, text: text || "", reaction: reaction || null, spoiler: spoiler || false, liked_by: [] });
+  await supabase.from("comments").insert({ user_id: userId, show_id: String(showId), ep_tmdb_id: epTmdbId ?? null, text: text || "", reaction: reaction || null, spoiler: spoiler || false, liked_by: [] });
 }
 
 export async function deleteComment(commentId) {
@@ -102,7 +108,7 @@ export function watchedToRows(nw) {
       const snMatch = k.match(/_s(\d+)e(\d+)$/);
       watchedEpisodes.push({ episode_key: k, show_id: String(v.showId), season_number: snMatch ? parseInt(snMatch[1]) : null, episode_number: snMatch ? parseInt(snMatch[2]) : null, ep_tmdb_id: v.epId || null, watched_at: new Date(v.watchedAt || Date.now()).toISOString(), imported_from: v.importedFrom || null });
     } else {
-      watchedItems.push({ item_key: k, item_id: String(v.id), media_type: v.type, name: v.name, poster_path: v.poster_path || null, genre_ids: v.genre_ids || [], vote_average: v.vote_average || 0, watched_at: new Date(v.watchedAt || Date.now()).toISOString(), imported_from: v.importedFrom || null });
+      watchedItems.push({ item_key: k, item_id: String(v.id), media_type: v.type, tmdb_id: v.tmdbId || null, name: v.name, poster_path: v.poster_path || null, genre_ids: v.genre_ids || [], vote_average: v.vote_average || 0, watched_at: new Date(v.watchedAt || Date.now()).toISOString(), imported_from: v.importedFrom || null });
     }
   });
   return { watchedItems, watchedEpisodes };
