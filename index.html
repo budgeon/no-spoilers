@@ -6,8 +6,27 @@
     <meta name="description" content="No Spoilers — track TV shows and movies with your community. No spoilers guaranteed." />
     <title>No Spoilers</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      #root:empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #F5F0E8;
+      }
+      #root:empty::after {
+        content: "";
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(107,140,174,0.2);
+        border-top-color: #6B8CAE;
+        border-radius: 50%;
+        animation: _spin 0.75s linear infinite;
+      }
+      @keyframes _spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
-  <body>
+  <body style="margin:0;background:#F5F0E8;">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

@@ -6,6 +6,10 @@ export async function fetchProfile(userId) {
   return data ? { id: data.id, name: data.name, avatar: data.avatar, joinedAt: data.created_at } : null;
 }
 
+export async function updateProfile(userId, { name, avatar }) {
+  await supabase.from("profiles").update({ name, avatar }).eq("id", userId);
+}
+
 export async function loadUserData(userId) {
   const [wi, we, wl, r, ep] = await Promise.all([
     supabase.from("watched_items").select("*").eq("user_id", userId),
@@ -83,6 +87,108 @@ export async function toggleCommentLike(commentId, userId, currentLikedBy) {
   const newLikedBy = likedBy.includes(userId) ? likedBy.filter(id => id !== userId) : [...likedBy, userId];
   await supabase.from("comments").update({ liked_by: newLikedBy }).eq("id", commentId);
   return newLikedBy;
+}
+
+// ─── SOCIAL ───────────────────────────────────────────────────────────────
+
+export async function followUser(followerId, followingId) {
+  await supabase.from("follows").insert({ follower_id: followerId, following_id: followingId });
+}
+
+export async function unfollowUser(followerId, followingId) {
+  await supabase.from("follows").delete()
+    .eq("follower_id", followerId).eq("following_id", followingId);
+}
+
+export async function isFollowing(followerId, followingId) {
+  const { data } = await supabase.from("follows").select("follower_id")
+    .eq("follower_id", followerId).eq("following_id", followingId).maybeSingle();
+  return !!data;
+}
+
+export async function fetchFollowing(userId) {
+  const { data } = await supabase.from("follows")
+    .select("following_id, profiles!follows_following_id_fkey(id, name, avatar, created_at)")
+    .eq("follower_id", userId);
+  return (data || []).map(r => ({ id: r.profiles.id, name: r.profiles.name, avatar: r.profiles.avatar, joinedAt: r.profiles.created_at }));
+}
+
+export async function fetchFollowers(userId) {
+  const { data } = await supabase.from("follows")
+    .select("follower_id, profiles!follows_follower_id_fkey(id, name, avatar, created_at)")
+    .eq("following_id", userId);
+  return (data || []).map(r => ({ id: r.profiles.id, name: r.profiles.name, avatar: r.profiles.avatar, joinedAt: r.profiles.created_at }));
+}
+
+export async function fetchFollowCounts(userId) {
+  const [fing, fers] = await Promise.all([
+    supabase.from("follows").select("following_id", { count: "exact", head: true }).eq("follower_id", userId),
+    supabase.from("follows").select("follower_id",  { count: "exact", head: true }).eq("following_id", userId),
+  ]);
+  return { following: fing.count || 0, followers: fers.count || 0 };
+}
+
+export async function searchProfiles(query, currentUserId, limit = 20) {
+  if (!query.trim()) return [];
+  const { data } = await supabase.from("profiles")
+    .select("id, name, avatar, created_at")
+    .ilike("name", `%${query}%`)
+    .neq("id", currentUserId)
+    .limit(limit);
+  return (data || []).map(r => ({ id: r.id, name: r.name, avatar: r.avatar, joinedAt: r.created_at }));
+}
+
+export async function fetchPublicProfileStats(userId) {
+  const [wi, we] = await Promise.all([
+    supabase.from("watched_items").select("media_type").eq("user_id", userId),
+    supabase.from("watched_episodes").select("episode_key").eq("user_id", userId),
+  ]);
+  return {
+    shows:    (wi.data || []).filter(r => r.media_type === "tv").length,
+    movies:   (wi.data || []).filter(r => r.media_type === "movie").length,
+    episodes: (we.data || []).length,
+  };
+}
+
+export async function fetchActivityFeed(userId, limit = 50) {
+  const { data: followRows } = await supabase.from("follows")
+    .select("following_id").eq("follower_id", userId);
+  const followedIds = (followRows || []).map(r => r.following_id);
+  if (!followedIds.length) return [];
+
+  const [wi, we] = await Promise.all([
+    supabase.from("watched_items")
+      .select("user_id, item_key, item_id, media_type, name, poster_path, watched_at, profiles(name, avatar)")
+      .in("user_id", followedIds).order("watched_at", { ascending: false }).limit(limit),
+    supabase.from("watched_episodes")
+      .select("user_id, episode_key, show_id, season_number, episode_number, watched_at, profiles(name, avatar)")
+      .in("user_id", followedIds).order("watched_at", { ascending: false }).limit(limit),
+  ]);
+
+  const showNameMap = {};
+  (wi.data || []).forEach(r => {
+    if (r.media_type === "tv") showNameMap[`${r.user_id}:${r.item_id}`] = r.name;
+  });
+
+  const items = [
+    ...(wi.data || []).map(r => ({
+      type: r.media_type === "tv" ? "show" : "movie",
+      userId: r.user_id, userName: r.profiles?.name || "Unknown", avatar: r.profiles?.avatar || "🎬",
+      name: r.name, poster_path: r.poster_path, itemKey: r.item_key, itemId: r.item_id,
+      showId: null, season: null, episode: null,
+      watchedAt: new Date(r.watched_at).getTime(),
+    })),
+    ...(we.data || []).map(r => ({
+      type: "episode",
+      userId: r.user_id, userName: r.profiles?.name || "Unknown", avatar: r.profiles?.avatar || "🎬",
+      name: null, poster_path: null, itemKey: r.episode_key, itemId: null,
+      showId: r.show_id, season: r.season_number, episode: r.episode_number,
+      showName: showNameMap[`${r.user_id}:${r.show_id}`] || null,
+      watchedAt: new Date(r.watched_at).getTime(),
+    })),
+  ];
+
+  return items.sort((a, b) => b.watchedAt - a.watchedAt).slice(0, limit);
 }
 
 const CHUNK = 500;

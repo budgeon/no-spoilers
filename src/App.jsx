@@ -19,6 +19,8 @@ const DetailSheet        = lazy(() => import("./features/DetailSheet.jsx"));
 const Importer           = lazy(() => import("./features/Importer.jsx"));
 const AuthScreen         = lazy(() => import("./features/AuthScreen.jsx"));
 const ResetPasswordScreen = lazy(() => import("./features/ResetPasswordScreen.jsx"));
+const SocialTab          = lazy(() => import("./features/SocialTab.jsx"));
+const PublicProfileSheet = lazy(() => import("./features/PublicProfileSheet.jsx"));
 
 export default function App() {
   const [tab,setTab]=useState("shows");
@@ -31,6 +33,7 @@ export default function App() {
   const [epTotals,setEpTotals]=useState({});
   const [confetti,setConfetti]=useState(null);
   const [showImporter,setShowImporter]=useState(false);
+  const [viewedProfile,setViewedProfile]=useState(null);
   const [resettingPassword,setResettingPassword]=useState(false);
 
   useEffect(() => {
@@ -102,7 +105,12 @@ export default function App() {
             {tab==="shows"&&<ShowsTab {...sharedProps}/>}
             {tab==="movies"&&<MoviesTab {...sharedProps}/>}
             {tab==="discover"&&<DiscoverTab watched={watched} watchlist={watchlist} setWatchlist={setWatchlist} onSelect={handleSelect} user={user}/>}
-            {tab==="profile"&&<ProfileTab user={user} watched={watched} ratings={ratings} watchlist={watchlist} epTotals={epTotals} onLogout={()=>Auth.logout()} onImport={()=>setShowImporter(true)}/>}
+            {tab==="friends"&&(
+              <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+                <SocialTab user={user} watched={watched} onViewProfile={setViewedProfile}/>
+              </Suspense>
+            )}
+            {tab==="profile"&&<ProfileTab user={user} watched={watched} ratings={ratings} watchlist={watchlist} epTotals={epTotals} onLogout={()=>Auth.logout()} onImport={()=>setShowImporter(true)} onProfileUpdate={u=>setUser(prev=>({...prev,...u}))}/>}
           </ErrorBoundary>
         </div>
 
@@ -126,6 +134,11 @@ export default function App() {
       {showImporter&&(
         <Suspense fallback={null}>
           <Importer onClose={()=>setShowImporter(false)} watched={watched} setWatched={setWatched} watchlist={watchlist} setWatchlist={setWatchlist} epTotals={epTotals} setEpTotals={setEpTotals} user={user}/>
+        </Suspense>
+      )}
+      {viewedProfile&&(
+        <Suspense fallback={null}>
+          <PublicProfileSheet profile={viewedProfile} currentUser={user} onClose={()=>setViewedProfile(null)}/>
         </Suspense>
       )}
     </>
