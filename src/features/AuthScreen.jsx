@@ -11,6 +11,7 @@ export default function AuthScreen() {
   const [showPw, setShowPw] = useState(false);
   const [err, setErr] = useState("");
   const [confirmSent, setConfirmSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
 
@@ -47,6 +48,16 @@ export default function AuthScreen() {
   };
 
   const handleGoogle = () => { setGLoading(true); Auth.google(); };
+
+  const handleForgot = async () => {
+    setErr("");
+    if (!email.trim()) { setErr("Enter your email above first."); return; }
+    setLoading(true);
+    const { error } = await Auth.resetPassword(email.trim().toLowerCase());
+    setLoading(false);
+    if (error?.status === 429) { setErr("Too many attempts — please wait a minute and try again."); return; }
+    setResetSent(true);
+  };
 
   if (confirmSent) return (
     <div style={{minHeight:"100vh", background:G.bg, display:"flex", alignItems:"center", justifyContent:"center", padding:24}}>
@@ -111,6 +122,14 @@ export default function AuthScreen() {
               : <>Have an account? <button onClick={() => { setMode("login"); setErr(""); }} style={{color:G.accent, background:"none", border:"none", fontSize:12, fontWeight:500}}>Sign in</button></>
             }
           </div>
+          {mode === "login" && (
+            <div style={{textAlign:"center", marginTop:8, fontSize:12}}>
+              {resetSent
+                ? <span style={{color:G.success}}>Reset link sent — check your email.</span>
+                : <button onClick={handleForgot} disabled={loading} style={{color:G.dim, background:"none", border:"none", fontSize:12}}>Forgot password?</button>
+              }
+            </div>
+          )}
         </div>
       </div>
     </div>

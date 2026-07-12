@@ -10,4 +10,6 @@ export const Auth = {
   signup: (email, name, pw) => supabase.auth.signUp({ email, password: pw, options: { data: { name, avatar: randomAvatar() } } }),
   google: () => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } }),
   logout: () => supabase.auth.signOut(),
+  resetPassword: (email) => supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/` }),
+  updatePassword: (password) => supabase.auth.updateUser({ password }),
 };
