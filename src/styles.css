@@ -191,6 +191,10 @@ button { cursor: pointer; border: none; background: none; color: inherit; font-f
 /* ─── PROFILE ACTIONS ─────────────────────────────────────────────────────── */
 .profile-action { width: 100%; padding: 15px 16px; text-align: left; font-size: 14px; background: transparent; border: none; font-family: inherit; display: flex; align-items: center; gap: 10px; cursor: pointer; }
 
+/* ─── SOCIAL ──────────────────────────────────────────────────────────────── */
+.overlay-profile { z-index: 250; background: rgba(0,0,0,0.72); backdrop-filter: blur(5px); }
+.sheet-profile   { max-height: 70vh; display: flex; flex-direction: column; background: var(--surface); animation-duration: 0.25s; }
+
 /* ─── AUTH ────────────────────────────────────────────────────────────────── */
 .auth-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; color: var(--text); font-size: 14px; font-family: inherit; }
 .auth-mode-btn { flex: 1; padding: 8px; border-radius: 8px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s; color: var(--muted); background: transparent; }
