@@ -10,23 +10,38 @@ export async function updateProfile(userId, { name, avatar }) {
   await supabase.from("profiles").update({ name, avatar }).eq("id", userId);
 }
 
+async function fetchAllPages(buildQuery) {
+  const PAGE = 1000;
+  let rows = [], from = 0;
+  while (true) {
+    const { data } = await buildQuery(from, from + PAGE - 1);
+    if (!data?.length) break;
+    rows = rows.concat(data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return rows;
+}
+
 export async function loadUserData(userId) {
-  const [wi, we, wl, r, ep] = await Promise.all([
+  const [wi, wl, r] = await Promise.all([
     supabase.from("watched_items").select("*").eq("user_id", userId),
-    supabase.from("watched_episodes").select("*").eq("user_id", userId),
     supabase.from("watchlist_items").select("*").eq("user_id", userId),
     supabase.from("ratings").select("*").eq("user_id", userId),
-    supabase.from("ep_totals").select("*"),
+  ]);
+  const [weRows, epRows] = await Promise.all([
+    fetchAllPages((from, to) => supabase.from("watched_episodes").select("*").eq("user_id", userId).range(from, to)),
+    fetchAllPages((from, to) => supabase.from("ep_totals").select("*").range(from, to)),
   ]);
   const watched = {};
   wi.data?.forEach(row => { watched[row.item_key] = { id: row.item_id, tmdbId: row.tmdb_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
-  we.data?.forEach(row => { watched[row.episode_key] = { epId: row.ep_tmdb_id, showId: row.show_id, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
+  weRows.forEach(row => { watched[row.episode_key] = { epId: row.ep_tmdb_id, showId: row.show_id, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
   const watchlist = {};
   wl.data?.forEach(row => { watchlist[row.item_key] = { id: row.item_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, addedAt: new Date(row.added_at).getTime(), item: row.item_data, importedFrom: row.imported_from }; });
   const ratings = {};
   r.data?.forEach(row => { ratings[row.item_key] = row.rating; });
   const epTotals = {};
-  ep.data?.forEach(row => { epTotals[row.show_id] = row.total_episodes; });
+  epRows.forEach(row => { epTotals[row.show_id] = row.total_episodes; });
   return { watched, watchlist, ratings, epTotals };
 }
 
@@ -139,14 +154,15 @@ export async function searchProfiles(query, currentUserId, limit = 20) {
 }
 
 export async function fetchPublicProfileStats(userId) {
-  const [wi, we] = await Promise.all([
-    supabase.from("watched_items").select("media_type").eq("user_id", userId),
-    supabase.from("watched_episodes").select("episode_key").eq("user_id", userId),
+  const [tvCount, mvCount, epCount] = await Promise.all([
+    supabase.from("watched_items").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("media_type", "tv"),
+    supabase.from("watched_items").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("media_type", "movie"),
+    supabase.from("watched_episodes").select("*", { count: "exact", head: true }).eq("user_id", userId),
   ]);
   return {
-    shows:    (wi.data || []).filter(r => r.media_type === "tv").length,
-    movies:   (wi.data || []).filter(r => r.media_type === "movie").length,
-    episodes: (we.data || []).length,
+    shows:    tvCount.count ?? 0,
+    movies:   mvCount.count ?? 0,
+    episodes: epCount.count ?? 0,
   };
 }
 
