@@ -36,7 +36,7 @@ Rule of thumb: use a CSS class for static styles, inline style only when the val
 
 ### Persistence
 
-Everything is `localStorage`. No backend.
+Two layers: Supabase (primary) + `localStorage` (cache/offline).
 
 - **`src/constants/storage.js`** exports `LS` (get/set wrapper) and `SK` (key constants).
 - All keys are prefixed `tt_`. Defaults: `LS.get(SK.W)` → `{}`, not `[]`.
@@ -44,6 +44,28 @@ Everything is `localStorage`. No backend.
   - Watched title: `tv_${id}` or `movie_${id}`
   - Watched episode: `ep_show${showId}_ep${epId}`
   - Watchlist entry: `${media_type}_${id}`
+
+### Database layer (`src/lib/db.js`)
+
+PostgREST (Supabase's query layer) silently truncates un-paginated results at 1,000 rows. Every query in `db.js` is explicitly bounded:
+
+**Fully paginated — no row cap (via `fetchAllPages` helper):**
+- `watched_items` — movies + TV shows; easily exceeds 1,000 for active importers
+- `watched_episodes` — 10,000+ rows common after TV Time import
+- `watchlist_items`
+- `ratings`
+- `ep_totals` — global table, grows with every unique show in the system
+
+**Hard-capped limits — revisit at scale:**
+- `loadComments` — `.limit(200)` per show/episode thread. Add cursor-based "load more" when threads grow.
+- `fetchFollowing` — `.limit(500)`. Replace with `fetchAllPages` if power users follow hundreds of accounts.
+- `fetchFollowers` — `.limit(500)`. Same.
+- `fetchActivityFeed` follows sub-query — `.limit(500)` on the `followedIds` fetch, which cascades to an incomplete activity feed for users with large follow graphs. Paginate or move to a server-side aggregation query.
+
+**Implicitly safe (no change needed):**
+- Single-row lookups: `.single()` / `.maybeSingle()`
+- Count-only requests: `{ count: "exact", head: true }`
+- Explicitly limited: `searchProfiles` (20), `fetchActivityFeed` main queries (50)
 
 ### Auth
 

@@ -24,22 +24,20 @@ async function fetchAllPages(buildQuery) {
 }
 
 export async function loadUserData(userId) {
-  const [wi, wl, r] = await Promise.all([
-    supabase.from("watched_items").select("*").eq("user_id", userId),
-    supabase.from("watchlist_items").select("*").eq("user_id", userId),
-    supabase.from("ratings").select("*").eq("user_id", userId),
-  ]);
-  const [weRows, epRows] = await Promise.all([
+  const [wiRows, wlRows, rRows, weRows, epRows] = await Promise.all([
+    fetchAllPages((from, to) => supabase.from("watched_items").select("*").eq("user_id", userId).range(from, to)),
+    fetchAllPages((from, to) => supabase.from("watchlist_items").select("*").eq("user_id", userId).range(from, to)),
+    fetchAllPages((from, to) => supabase.from("ratings").select("*").eq("user_id", userId).range(from, to)),
     fetchAllPages((from, to) => supabase.from("watched_episodes").select("*").eq("user_id", userId).range(from, to)),
     fetchAllPages((from, to) => supabase.from("ep_totals").select("*").range(from, to)),
   ]);
   const watched = {};
-  wi.data?.forEach(row => { watched[row.item_key] = { id: row.item_id, tmdbId: row.tmdb_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
+  wiRows.forEach(row => { watched[row.item_key] = { id: row.item_id, tmdbId: row.tmdb_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
   weRows.forEach(row => { watched[row.episode_key] = { epId: row.ep_tmdb_id, showId: row.show_id, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
   const watchlist = {};
-  wl.data?.forEach(row => { watchlist[row.item_key] = { id: row.item_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, addedAt: new Date(row.added_at).getTime(), item: row.item_data, importedFrom: row.imported_from }; });
+  wlRows.forEach(row => { watchlist[row.item_key] = { id: row.item_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, addedAt: new Date(row.added_at).getTime(), item: row.item_data, importedFrom: row.imported_from }; });
   const ratings = {};
-  r.data?.forEach(row => { ratings[row.item_key] = row.rating; });
+  rRows.forEach(row => { ratings[row.item_key] = row.rating; });
   const epTotals = {};
   epRows.forEach(row => { epTotals[row.show_id] = row.total_episodes; });
   return { watched, watchlist, ratings, epTotals };
@@ -85,7 +83,7 @@ export async function upsertEpTotal(showId, total) {
 export async function loadComments(showId, epTmdbId) {
   let q = supabase.from("comments").select("*, profiles(name, avatar)").eq("show_id", String(showId));
   q = epTmdbId != null ? q.eq("ep_tmdb_id", epTmdbId) : q.is("ep_tmdb_id", null);
-  const { data } = await q.order("created_at", { ascending: false });
+  const { data } = await q.order("created_at", { ascending: false }).limit(200);
   return (data || []).map(c => ({ id: c.id, userId: c.user_id, userName: c.profiles?.name || "Unknown", avatar: c.profiles?.avatar || "🎬", text: c.text, reaction: c.reaction, spoiler: c.spoiler, likes: (c.liked_by || []).length, likedBy: c.liked_by || [], createdAt: new Date(c.created_at).getTime() }));
 }
 
@@ -124,14 +122,14 @@ export async function isFollowing(followerId, followingId) {
 export async function fetchFollowing(userId) {
   const { data } = await supabase.from("follows")
     .select("following_id, profiles!follows_following_id_fkey(id, name, avatar, created_at)")
-    .eq("follower_id", userId);
+    .eq("follower_id", userId).limit(500);
   return (data || []).map(r => ({ id: r.profiles.id, name: r.profiles.name, avatar: r.profiles.avatar, joinedAt: r.profiles.created_at }));
 }
 
 export async function fetchFollowers(userId) {
   const { data } = await supabase.from("follows")
     .select("follower_id, profiles!follows_follower_id_fkey(id, name, avatar, created_at)")
-    .eq("following_id", userId);
+    .eq("following_id", userId).limit(500);
   return (data || []).map(r => ({ id: r.profiles.id, name: r.profiles.name, avatar: r.profiles.avatar, joinedAt: r.profiles.created_at }));
 }
 
@@ -168,7 +166,7 @@ export async function fetchPublicProfileStats(userId) {
 
 export async function fetchActivityFeed(userId, limit = 50) {
   const { data: followRows } = await supabase.from("follows")
-    .select("following_id").eq("follower_id", userId);
+    .select("following_id").eq("follower_id", userId).limit(500);
   const followedIds = (followRows || []).map(r => r.following_id);
   if (!followedIds.length) return [];
 
