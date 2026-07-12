@@ -21,7 +21,6 @@ export default function Importer({onClose, watched, setWatched, watchlist, setWa
   const handleFile = e => { const files = [...e.target.files]; if (!files.length) return; const bad = files.find(f => !f.name.endsWith(".csv")); if (bad) { setErr(`${bad.name} is not a .csv file.`); setStage("error"); return; } setStage("parsing"); Promise.all(files.map(parseFile)).then(results => { const combined = results.flatMap(r => r.watchedRows); const allWlRows = results.flatMap(r => r.watchlistRows); const watchedMovieNames = new Set(combined.map(r => r.movie_name).filter(Boolean)); const wlRows = allWlRows.filter(r => !watchedMovieNames.has(r.movie_name)); const shows = new Set(), movies = new Set(), eps = []; combined.forEach(r => { const name = r.show_name || r.series_name || r.name || r.title || r.movie_name || ""; const type = (r.entity_type || r.media_type || (r.movie_name && !r.series_name ? "movie" : "show")).toLowerCase(); if (!name) return; if (type.includes("movie") || type.includes("film")) movies.add(name); else { shows.add(name); eps.push(r); } }); const wlMovieNames = new Set(wlRows.map(r => r.movie_name).filter(Boolean)); const wlShowNames = new Set(wlRows.filter(r => r.series_name && !r.movie_name).map(r => r.series_name)); setPreview({rows: combined, watchlistRows: wlRows, shows: [...shows], movies: [...movies], episodeCount: eps.length, totalRows: shows.size + movies.size + eps.length + wlMovieNames.size + wlShowNames.size, watchlistCount: wlMovieNames.size + wlShowNames.size}); setStage("preview"); }).catch(e => { setErr(e.message); setStage("error"); }); };
 
   const enrichImported = async (nw, nwl = {}, userId) => {
-    if (!hasKey()) return;
     const cache = LS.get(SK.EC, {});
     const applyToNwl = (entry, e) => ({ ...entry, poster_path: e.poster_path, tmdbId: e.tmdbId, vote_average: e.vote_average || 0, item: { ...entry.item, poster_path: e.poster_path, genre_ids: e.genre_ids || [], tmdbId: e.tmdbId, vote_average: e.vote_average || 0 } });
     const newEpTotals = {...epTotals};
@@ -33,12 +32,16 @@ export default function Importer({onClose, watched, setWatched, watchlist, setWa
     allEntries.forEach(({wk, entry}) => { const ck = `${entry.type}:${entry.name}`; if (cache[ck]) { const e = cache[ck]; if (nw[wk]) nw[wk] = {...nw[wk], ...e}; if (nwl[wk]) nwl[wk] = applyToNwl(nwl[wk], e); } });
     setWatched({...nw}); setWatchlist({...nwl});
     const uncached = [...allEntries.entries()].filter(([ck]) => !cache[ck]);
+    if (!hasKey()) return;
     const BATCH = 10;
     for (let i = 0; i < uncached.length; i += BATCH) {
       await Promise.all(uncached.slice(i, i + BATCH).map(async ([ck, {wk, entry}]) => {
         try {
-          const d = await tmdb(entry.type === "movie" ? "/search/movie" : "/search/tv", {query: entry.name});
-          const hit = d.results?.[0];
+          const yearMatch = entry.name.match(/\s*\((\d{4})\)\s*$/);
+          const cleanName = yearMatch ? entry.name.slice(0, yearMatch.index).trim() : entry.name;
+          const ep = entry.type === "movie" ? "/search/movie" : "/search/tv";
+          const d = await tmdb(ep, yearMatch ? {query: cleanName, [entry.type === "movie" ? "primary_release_year" : "first_air_date_year"]: yearMatch[1]} : {query: cleanName});
+          const hit = d.results?.[0] ?? (yearMatch ? (await tmdb(ep, {query: cleanName})).results?.[0] : null);
           if (hit) { const enriched = {poster_path: hit.poster_path, genre_ids: hit.genre_ids || [], vote_average: hit.vote_average || 0, tmdbId: hit.id}; if (entry.type === "tv") { try { const det = await tmdb(`/tv/${hit.id}`); if (det.number_of_episodes > 0) { enriched.episodeCount = det.number_of_episodes; newEpTotals[entry.id] = det.number_of_episodes; } } catch {} } if (nw[wk]) nw[wk] = {...nw[wk], ...enriched}; if (nwl[wk]) nwl[wk] = applyToNwl(nwl[wk], enriched); cache[ck] = {...enriched, ts: Date.now()}; }
         } catch { /* keep entry as-is */ }
       }));
@@ -50,9 +53,12 @@ export default function Importer({onClose, watched, setWatched, watchlist, setWa
   };
 
   const runImport = async () => { if (!preview) return; setStage("importing"); const nw = {...watched}; Object.keys(nw).forEach(k => { if (k.startsWith("ep_show") && nw[k].importedFrom === "tvtime") delete nw[k]; }); let proc = 0; const showMap = {}, movieNames = new Set(); preview.rows.forEach(r => { const name = r.show_name || r.series_name || r.name || r.title || r.movie_name || ""; const type = (r.entity_type || r.media_type || (r.movie_name && !r.series_name ? "movie" : "show")).toLowerCase(); if (!name) return; if (type.includes("movie") || type.includes("film")) movieNames.add(name); else { if (!showMap[name]) showMap[name] = {episodes:[], name}; showMap[name].episodes.push(r); } proc++; setProgress(Math.round((proc/preview.rows.length)*80)); }); Object.values(showMap).forEach(show => { const sid = `tvtime_${show.name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `tv_${sid}`; if (!nw[wk]) nw[wk] = {id:sid, type:"tv", name:show.name, poster_path:null, genre_ids:[], watchedAt:Date.now(), importedFrom:"tvtime", episodeCount:show.episodes.length}; show.episodes.forEach((ep,i) => { const eid = ep.episode_id || ep.ep_id || i; const sn = parseInt(ep.season_number); const en = parseInt(ep.episode_number); const ek = (!isNaN(sn) && !isNaN(en)) ? `ep_show${sid}_s${sn}e${en}` : `ep_show${sid}_ep${eid}`; if (!nw[ek]) nw[ek] = {epId:eid, showId:sid, watchedAt:ep.watched_at?new Date(ep.watched_at).getTime():ep.created_at?new Date(ep.created_at).getTime():Date.now(), importedFrom:"tvtime"}; }); }); setProgress(85); movieNames.forEach(name => { const sid = `tvtime_movie_${name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `movie_${sid}`; if (!nw[wk]) nw[wk] = {id:sid, type:"movie", name, poster_path:null, genre_ids:[], watchedAt:Date.now(), importedFrom:"tvtime"}; }); const nwl = {...watchlist}; const wlMovieNames = new Set(preview.watchlistRows.map(r => r.movie_name).filter(Boolean)); wlMovieNames.forEach(name => { const sid = `tvtime_movie_${name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `movie_${sid}`; if (!nwl[wk]) nwl[wk] = {id:sid, type:"movie", name, poster_path:null, addedAt:Date.now(), item:{id:sid, type:"movie", media_type:"movie", name, poster_path:null, genre_ids:[]}, importedFrom:"tvtime"}; }); const wlShowNames = new Set(preview.watchlistRows.filter(r => r.series_name && !r.movie_name).map(r => r.series_name).filter(Boolean)); wlShowNames.forEach(name => { const sid = `tvtime_${name.toLowerCase().replace(/\s+/g,"_")}`; const wk = `tv_${sid}`; if (!nwl[wk]) nwl[wk] = {id:sid, type:"tv", name, poster_path:null, addedAt:Date.now(), item:{id:sid, type:"tv", media_type:"tv", name, poster_path:null, genre_ids:[]}, importedFrom:"tvtime"}; }); setProgress(95); setWatched(nw); setWatchlist(nwl);
+    const importedEpTotals = {};
+    Object.values(showMap).forEach(show => { const sid = `tvtime_${show.name.toLowerCase().replace(/\s+/g,"_")}`; importedEpTotals[sid] = show.episodes.length; });
+    setEpTotals(prev => ({...prev, ...importedEpTotals}));
     const { watchedItems, watchedEpisodes } = watchedToRows(nw);
-    bulkImport(user.id, { watchedItems, watchedEpisodes, watchlistItems: watchlistToRows(nwl) });
-    setProgress(100); setTimeout(() => { setStage("done"); enrichImported(nw, nwl, user.id); }, 400); };
+    await bulkImport(user.id, { watchedItems, watchedEpisodes, watchlistItems: watchlistToRows(nwl), epTotals: importedEpTotals });
+    setProgress(100); setStage("done"); enrichImported(nw, nwl, user.id); };
 
   return (
     <div className="overlay overlay-importer" onClick={onClose}>
