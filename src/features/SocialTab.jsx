@@ -81,6 +81,8 @@ export default function SocialTab({ user, watched, onViewProfile }) {
     }
   };
 
+  if (loading) return <Center py={120}><Spinner/></Center>;
+
   return (
     <div>
       <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, paddingTop:4}}>
@@ -140,9 +142,7 @@ export default function SocialTab({ user, watched, onViewProfile }) {
       {!showSearch && (
         <>
           <div className="section-label">FRIENDS' ACTIVITY</div>
-          {loading
-            ? <Center py={80}><Spinner/></Center>
-            : feed.length === 0
+          {feed.length === 0
               ? <Center py={80}><div style={{textAlign:"center", color:G.dim, fontSize:13}}>
                   {counts.following === 0 ? "Follow some friends to see their activity here." : "No recent activity from people you follow."}
                 </div></Center>

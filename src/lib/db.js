@@ -6,6 +6,10 @@ export async function fetchProfile(userId) {
   return data ? { id: data.id, name: data.name, avatar: data.avatar, joinedAt: data.created_at } : null;
 }
 
+export async function updateProfile(userId, { name, avatar }) {
+  await supabase.from("profiles").update({ name, avatar }).eq("id", userId);
+}
+
 export async function loadUserData(userId) {
   const [wi, we, wl, r, ep] = await Promise.all([
     supabase.from("watched_items").select("*").eq("user_id", userId),

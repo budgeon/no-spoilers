@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabase.js";
 
-const AVATARS = ["🎬","🎥","🍿","📺","🎭","🎞️","🦁","🐯","🦊","🐺","🦅","🌟"];
+export const AVATARS = ["🎬","🎥","🍿","📺","🎭","🎞️","🦁","🐯","🦊","🐺","🦅","🌟"];
 const randomAvatar = () => AVATARS[Math.floor(Math.random() * AVATARS.length)];
 
 export const Auth = {
