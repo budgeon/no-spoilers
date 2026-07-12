@@ -15,9 +15,10 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import Center from "./components/Center.jsx";
 import Spinner from "./components/Spinner.jsx";
 
-const DetailSheet = lazy(() => import("./features/DetailSheet.jsx"));
-const Importer    = lazy(() => import("./features/Importer.jsx"));
-const AuthScreen  = lazy(() => import("./features/AuthScreen.jsx"));
+const DetailSheet        = lazy(() => import("./features/DetailSheet.jsx"));
+const Importer           = lazy(() => import("./features/Importer.jsx"));
+const AuthScreen         = lazy(() => import("./features/AuthScreen.jsx"));
+const ResetPasswordScreen = lazy(() => import("./features/ResetPasswordScreen.jsx"));
 
 export default function App() {
   const [tab,setTab]=useState("shows");
@@ -30,10 +31,13 @@ export default function App() {
   const [epTotals,setEpTotals]=useState({});
   const [confetti,setConfetti]=useState(null);
   const [showImporter,setShowImporter]=useState(false);
+  const [resettingPassword,setResettingPassword]=useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = Auth.onAuthChange(async (event, session) => {
       if (event === "TOKEN_REFRESHED") return;
+      if (event === "PASSWORD_RECOVERY") { setResettingPassword(true); setAuthLoading(false); return; }
+      if (event === "USER_UPDATED") setResettingPassword(false);
       if (session?.user) {
         await migrateLocalStorage(session.user.id);
         let profile = await fetchProfile(session.user.id);
@@ -55,6 +59,12 @@ export default function App() {
   const handleSelect=item=>{ setSelected(item); const r=LS.get(SK.REC,[]); LS.set(SK.REC,[{...item,viewedAt:Date.now()},...r.filter(x=>!(x.id===item.id&&x.media_type===item.media_type))].slice(0,12)); };
 
   if (authLoading) return <Center py={200}><Spinner/></Center>;
+
+  if (resettingPassword) return (
+    <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+      <ResetPasswordScreen/>
+    </Suspense>
+  );
 
   if(!user) return (
     <Suspense fallback={<Center py={200}><Spinner/></Center>}>
