@@ -7,7 +7,7 @@ export default memo(function EpisodeRow({ep, showId, watched, onToggle, onOpenCo
   return (
     <div className="episode-row">
       <button onClick={() => onToggle(ep)} className={`episode-check${ew ? " watched" : ""}`}>✓</button>
-      <div style={{flex:1, cursor:"pointer"}} onClick={() => onOpenComments(ep)}>
+      <div style={{flex:1, cursor:"pointer", minWidth:0}} onClick={() => onOpenComments(ep)}>
         <div className={`episode-title${ew ? " watched" : ""}`}>
           <span className="episode-num">E{ep.episode_number}</span>{ep.name}
         </div>

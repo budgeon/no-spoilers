@@ -76,10 +76,12 @@ button { cursor: pointer; border: none; background: none; color: inherit; font-f
 .avatar-lg { width: 72px; height: 72px; font-size: 26px; }
 
 /* ─── SUB-TABS ────────────────────────────────────────────────────────────── */
-.sub-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.sub-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.sub-tabs::-webkit-scrollbar { display: none; }
 .sub-tab {
-  flex: 1;
-  padding: 12px 0;
+  flex-shrink: 0;
+  padding: 12px 14px;
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 500;
   background: transparent;
@@ -142,7 +144,7 @@ button { cursor: pointer; border: none; background: none; color: inherit; font-f
   border: 2px solid var(--border2); background: transparent; color: transparent;
 }
 .episode-check.watched { border-color: var(--accent); background: var(--accent); color: #000; }
-.episode-title         { font-size: 13px; font-weight: 500; color: var(--text); }
+.episode-title         { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .episode-title.watched { font-weight: 400; color: var(--muted); }
 .episode-num     { color: var(--dim); margin-right: 6px; }
 .episode-date    { font-size: 11px; color: var(--dim); }

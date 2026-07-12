@@ -53,7 +53,7 @@ export default function ProfileTab({user, watched, ratings, watchlist, epTotals,
         <div style={{fontSize:11, color:G.dim, marginTop:2}}>{epCount} episodes · {mvCount} movies</div>
       </div>
 
-      <div style={{display:"flex", gap:10, marginBottom:16}}>
+      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16}}>
         <StatBox label="TV Shows" value={tvCount}/>
         <StatBox label="Movies" value={mvCount}/>
         <StatBox label="Avg Rating" value={avg ? `${avg}★` : "—"}/>
@@ -77,11 +77,12 @@ export default function ProfileTab({user, watched, ratings, watchlist, epTotals,
 
       <div style={{background:G.surface, borderRadius:12, overflow:"hidden", marginBottom:16}}>
         {[
-          {label: "📥 Import from TV Time", action: onImport, color: G.accent},
-          {label: "↪ Sign out", action: onLogout, color: G.red},
+          {icon:"📥", text:"Import from TV Time", action:onImport, color:G.accent},
+          {icon:"↪",  text:"Sign out",            action:onLogout, color:G.red},
         ].map((item, i) => (
-          <button key={i} onClick={item.action} className="profile-action" style={{color: item.color, borderTop: i > 0 ? `1px solid ${G.border}` : "none"}}>
-            {item.label}
+          <button key={i} onClick={item.action} className="profile-action" style={{color:item.color, borderTop:i>0?`1px solid ${G.border}`:"none"}}>
+            <span style={{flexShrink:0}}>{item.icon}</span>
+            <span>{item.text}</span>
           </button>
         ))}
       </div>
