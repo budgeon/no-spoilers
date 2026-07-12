@@ -3,7 +3,7 @@ import { G } from "../constants/tokens.js";
 import { LS, SK } from "../constants/storage.js";
 import { tmdb, TMDB_IMG, hasKey } from "../constants/api.js";
 import { useWatchlistToggle } from "../hooks/useWatchlistToggle.js";
-import { upsertWatchedItem, deleteWatchedItem, upsertWatchedEpisode, deleteWatchedEpisode, upsertRating, upsertEpTotal } from "../lib/db.js";
+import { upsertWatchedItem, deleteWatchedItem, upsertWatchedEpisode, deleteWatchedEpisode, upsertRating, deleteRating, upsertEpTotal } from "../lib/db.js";
 import Center from "../components/Center.jsx";
 import Spinner from "../components/Spinner.jsx";
 import Pill from "../components/Pill.jsx";
@@ -52,9 +52,10 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
         if (cancelled) return;
         setDetail(item);
         if (isTV) {
-          setSeasons([{season_number:1, episode_count:8}]);
-          setEpisodes(Array.from({length:8}, (_,i) => ({id:i+1, episode_number:i+1, name:`Episode ${i+1}`, air_date:"2024-01-01"})));
-          const nt = {...epTotals, [id]:8}; setEpTotals(nt); upsertEpTotal(id, 8);
+          const total = item.number_of_episodes || 8;
+          setSeasons([{season_number:1, episode_count:total}]);
+          setEpisodes(Array.from({length:total}, (_,i) => ({id:i+1, episode_number:i+1, name:`Episode ${i+1}`, air_date:"2024-01-01"})));
+          const nt = {...epTotals, [id]:total}; setEpTotals(nt); upsertEpTotal(id, total);
         }
       }
       if (!cancelled) setLoading(false);
@@ -76,7 +77,12 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
 
   const toggleW = () => {
     const w = {...watched};
-    if (w[wk]) { delete w[wk]; setWatched(w); deleteWatchedItem(user.id, wk); }
+    if (w[wk]) {
+      delete w[wk];
+      Object.keys(w).filter(k => k.startsWith(`ep_show${id}_`)).forEach(k => { delete w[k]; deleteWatchedEpisode(user.id, k); });
+      setWatched(w); deleteWatchedItem(user.id, wk);
+      if (ratings[wk]) { const r = {...ratings}; delete r[wk]; setRatings(r); deleteRating(user.id, wk); }
+    }
     else { const entry = {id, type: item.media_type, name, poster_path: item.poster_path, genre_ids: item.genre_ids || [], vote_average: detail?.vote_average || item.vote_average || 0, watchedAt: Date.now()}; w[wk] = entry; setWatched(w); upsertWatchedItem(user.id, wk, entry); }
   };
 
@@ -88,14 +94,20 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
   };
 
   const setRate = s => { const r = {...ratings, [wk]: s}; setRatings(r); upsertRating(user.id, wk, s); };
-  const handleCloseComments = (updatedComments) => { if (commentEp) setCommentCounts(prev => ({...prev, [`show${id}_ep${commentEp.id}`]: updatedComments || []})); setCommentEp(null); };
+  const handleCloseComments = (updatedComments) => {
+    if (commentEp) {
+      const key = isTV ? `show${id}_ep${commentEp.id}` : `movie${id}`;
+      setCommentCounts(prev => ({...prev, [key]: updatedComments || []}));
+    }
+    setCommentEp(null);
+  };
 
   return (
     <>
       <div className="overlay overlay-detail" onClick={onClose}>
         <div className="sheet sheet-detail" onClick={e => e.stopPropagation()}>
 
-          <div style={{position:"relative", height:220, overflow:"hidden", borderRadius:"20px 20px 0 0"}}>
+          <div style={{position:"relative", height:220, overflow:"hidden"}}>
             {detail?.backdrop_path
               ? <img src={`${TMDB_IMG}/w780${detail.backdrop_path}`} alt="" style={{width:"100%", height:"100%", objectFit:"cover", opacity:0.5}}/>
               : <div style={{width:"100%", height:"100%", background:"linear-gradient(135deg,#E8E0D0,#D4CCBC)"}}/>
@@ -132,17 +144,26 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
               )}
 
               <div style={{display:"flex", gap:10, marginBottom:24}}>
-                <button onClick={toggleW} style={{flex:1, padding:"11px 0", background: isW ? G.success : G.accent, color:"#000", borderRadius:10, fontSize:14, fontWeight:700, border:"none"}}>
+                <button onClick={toggleW} style={{flex:1, padding:"11px 0", minHeight:44, background: isW ? G.success : G.accent, color:"#000", borderRadius:10, fontSize:14, fontWeight:700, border:"none"}}>
                   {isW ? "✓ Watched" : "Mark as Watched"}
                 </button>
-                <button onClick={() => toggleWL(item)} style={{width:48, height:44, borderRadius:10, border:`1px solid ${inWL ? G.accent : G.border2}`, background: inWL ? G.accentDim : "transparent", fontSize:20, color: inWL ? G.accent : G.muted}}>
-                  {inWL ? "★" : "☆"}
+                <button onClick={() => toggleWL(item)} style={{minWidth:48, height:44, borderRadius:10, border:`1px solid ${inWL ? G.accent : G.border2}`, background: inWL ? G.accentDim : "transparent", fontSize:20, color: inWL ? G.accent : G.muted}}>
+                  {inWL
+                    ? <svg width="13" height="16" viewBox="0 0 12 15" fill="currentColor"><path d="M0 0h12v15l-6-3.5L0 15z"/></svg>
+                    : <svg width="13" height="16" viewBox="0 0 12 15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="M1 1h10v13l-5-3-5 3z"/></svg>
+                  }
                 </button>
+                {!isTV && (
+                  <button onClick={() => setCommentEp({id: null, name: detail?.title || name, episode_number: null})} style={{minWidth:48, height:44, borderRadius:10, border:`1px solid ${G.border2}`, background:"transparent", color: commentCounts[`movie${id}`]?.length > 0 ? G.accent : G.muted, fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:1, padding:"0 8px"}}>
+                    💬
+                    {commentCounts[`movie${id}`]?.length > 0 && <span style={{fontSize:9, fontWeight:600, lineHeight:1}}>{commentCounts[`movie${id}`].length}</span>}
+                  </button>
+                )}
               </div>
 
-              <div style={{background:G.surface, borderRadius:12, padding:"16px", marginBottom:20}}>
-                <div className="section-label">YOUR RATING</div>
-                <div style={{display:"flex", gap:4}}>
+              <div style={{display:"flex", alignItems:"center", gap:12, marginBottom:20, flexWrap:"wrap", rowGap:8}}>
+                <span style={{fontSize:11, fontWeight:600, color:G.dim, letterSpacing:"0.06em", flexShrink:0}}>YOUR RATING</span>
+                <div style={{display:"flex", gap:4, alignItems:"center"}}>
                   {[1,2,3,4,5].map(i => (
                     <span
                       key={i}
@@ -150,9 +171,9 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
                       onMouseEnter={() => setRatingHover(i)}
                       onMouseLeave={() => setRatingHover(0)}
                       onClick={() => setRate(i)}
-                    >★</span>
+                    >{(ratingHover || rating) >= i ? "★" : "☆"}</span>
                   ))}
-                  {rating > 0 && <span style={{fontSize:13, color:G.accent, alignSelf:"center", marginLeft:6}}>{rating}/5</span>}
+                  {rating > 0 && <span style={{fontSize:13, color:G.accent, marginLeft:6}}>{rating}/5</span>}
                 </div>
               </div>
 

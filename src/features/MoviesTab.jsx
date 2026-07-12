@@ -4,7 +4,8 @@ import { useWatchlistToggle } from "../hooks/useWatchlistToggle.js";
 import Center from "../components/Center.jsx";
 import PosterCard from "../components/PosterCard.jsx";
 
-const SORT_OPTS = [{k:"watched",l:"Recent"},{k:"az",l:"A–Z"},{k:"rating",l:"Rating"},{k:"added",l:"Added"}];
+const WATCHED_SORT_OPTS  = [{k:"watched",l:"Recent"},{k:"az",l:"A–Z"},{k:"rating",l:"Rating"}];
+const WATCHLIST_SORT_OPTS = [{k:"added",l:"Added"},{k:"az",l:"A–Z"},{k:"rating",l:"Rating"}];
 
 export default function MoviesTab({watched, watchlist, setWatchlist, ratings, onSelect, user}) {
   const [tab, setTab] = useState("watched");
@@ -21,7 +22,8 @@ export default function MoviesTab({watched, watchlist, setWatchlist, ratings, on
   );
   const wlMovies = useMemo(() => Object.values(watchlist).filter(x => x.type === "movie"), [watchlist]);
 
-  const activeSort = sort === "watched" && tab === "watchlist" ? "added" : sort;
+  const sortOpts = tab === "watchlist" ? WATCHLIST_SORT_OPTS : WATCHED_SORT_OPTS;
+  const activeSort = tab === "watchlist" ? (sort === "watched" ? "added" : sort) : sort;
   const visWatched   = useMemo(() => applySort(applySearch(watchedMovies, query), activeSort), [watchedMovies, query, activeSort, ratings]);
   const visWatchlist = useMemo(() => applySort(applySearch(wlMovies,      query), activeSort), [wlMovies,      query, activeSort, ratings]);
 
@@ -36,7 +38,7 @@ export default function MoviesTab({watched, watchlist, setWatchlist, ratings, on
           style={{width:"100%", background:G.surface, border:`1px solid ${G.border}`, borderRadius:10, padding:"9px 12px 9px 34px", fontSize:13, color:G.text, boxSizing:"border-box"}}/>
       </div>
       <div style={{display:"flex", gap:6, marginBottom:12, overflowX:"auto", paddingBottom:2}}>
-        {SORT_OPTS.map(o => <button key={o.k} onClick={() => setSort(o.k)} className={`season-chip${sort === o.k ? " active" : ""}`}>{o.l}</button>)}
+        {sortOpts.map(o => <button key={o.k} onClick={() => setSort(o.k)} className={`season-chip${activeSort === o.k ? " active" : ""}`}>{o.l}</button>)}
       </div>
       <div className="sub-tabs">
         {[["watched","Watched"], ["watchlist","Watchlist"]].map(([id, label]) => (
