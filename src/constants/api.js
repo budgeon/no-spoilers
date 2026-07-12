@@ -1,13 +1,20 @@
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || "";
-export const TMDB_BASE = "https://api.themoviedb.org/3";
+const DEV_KEY = import.meta.env.VITE_TMDB_API_KEY || "";
+const IS_DEV = import.meta.env.DEV;
 export const TMDB_IMG = "https://image.tmdb.org/t/p";
 
 export const tmdb = async (path, params = {}, signal) => {
-  const url = new URL(`${TMDB_BASE}${path}`);
-  url.searchParams.set("api_key", TMDB_API_KEY);
-  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k,v));
+  let url;
+  if (IS_DEV && DEV_KEY) {
+    url = new URL(`https://api.themoviedb.org/3${path}`);
+    url.searchParams.set("api_key", DEV_KEY);
+  } else {
+    url = new URL("/api/tmdb", window.location.origin);
+    url.searchParams.set("path", path);
+  }
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const r = await fetch(url, signal ? { signal } : undefined);
-  if (!r.ok) throw new Error(r.status); return r.json();
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
 };
 
-export const hasKey = () => TMDB_API_KEY && TMDB_API_KEY !== "YOUR_TMDB_API_KEY_HERE";
+export const hasKey = () => IS_DEV ? !!DEV_KEY : true;
