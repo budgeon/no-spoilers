@@ -1,7 +1,17 @@
 import { useState, useEffect } from "react";
 import { G } from "../constants/tokens.js";
 import { fetchFollowing, fetchFollowers, isFollowing, followUser, unfollowUser } from "../lib/db.js";
-import Spinner from "../components/Spinner.jsx";
+
+const SkeletonRow = () => (
+  <div style={{display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderBottom:`1px solid ${G.border}`}}>
+    <div style={{width:32, height:32, borderRadius:"50%", flexShrink:0}} className="poster-img-wrap"/>
+    <div style={{flex:1, display:"flex", flexDirection:"column", gap:6}}>
+      <div style={{height:13, width:"45%", borderRadius:6}} className="poster-img-wrap"/>
+      <div style={{height:10, width:"30%", borderRadius:6}} className="poster-img-wrap"/>
+    </div>
+    <div style={{width:72, height:28, borderRadius:20}} className="poster-img-wrap"/>
+  </div>
+);
 
 export default function FollowListSheet({ userId, type, currentUser, onClose, onViewProfile, onFollowChange }) {
   const [users, setUsers] = useState([]);
@@ -34,7 +44,7 @@ export default function FollowListSheet({ userId, type, currentUser, onClose, on
 
   return (
     <div className="overlay overlay-comments" style={{zIndex:350}} onClick={onClose}>
-      <div className="sheet sheet-comments" onClick={e => e.stopPropagation()} style={{padding:"16px 0 0", minHeight:"50vh"}}>
+      <div className="sheet sheet-comments" onClick={e => e.stopPropagation()} style={{padding:"16px 0 0", height:"65vh"}}>
         <div style={{padding:"0 16px 12px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${G.border}`}}>
           <div style={{fontSize:15, fontWeight:700, color:G.text}}>
             {type === "following" ? "Following" : "Followers"}
@@ -42,7 +52,9 @@ export default function FollowListSheet({ userId, type, currentUser, onClose, on
           <button onClick={onClose} style={{fontSize:20, color:G.dim}}>✕</button>
         </div>
         {loading
-          ? <div style={{padding:40, display:"flex", justifyContent:"center"}}><Spinner/></div>
+          ? <div style={{overflowY:"hidden", flex:1}}>
+              {Array.from({length:5}).map((_, i) => <SkeletonRow key={i}/>)}
+            </div>
           : users.length === 0
             ? <div style={{padding:40, textAlign:"center", fontSize:13, color:G.muted}}>
                 {type === "following" ? "Not following anyone yet." : "No followers yet."}
