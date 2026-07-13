@@ -97,7 +97,7 @@ export default function App() {
           <div style={{fontSize:22,fontWeight:800,fontFamily:"'Outfit', sans-serif",color:G.text,letterSpacing:"-0.02em"}}>No<span style={{color:G.accent}}>Spoilers</span></div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             {!hasKey()&&<span style={{fontSize:11,color:G.accent,background:G.accentDim,padding:"3px 8px",borderRadius:20}}>Demo</span>}
-            <div style={{width:32,height:32,borderRadius:"50%",background:G.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#000"}}>{user.avatar}</div>
+            <div className="avatar avatar-md" style={{fontSize:16}}>{user.avatar}</div>
           </div>
         </div>
 
