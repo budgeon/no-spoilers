@@ -3,14 +3,16 @@ import { G } from "../constants/tokens.js";
 import { fetchPublicProfileStats, fetchFollowCounts, isFollowing, followUser, unfollowUser } from "../lib/db.js";
 import Center from "../components/Center.jsx";
 import Spinner from "../components/Spinner.jsx";
+import FollowListSheet from "./FollowListSheet.jsx";
 
-export default function PublicProfileSheet({ profile, currentUser, onClose }) {
+export default function PublicProfileSheet({ profile, currentUser, onClose, onViewProfile }) {
   const [stats, setStats] = useState(null);
   const [counts, setCounts] = useState({ following: 0, followers: 0 });
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [followError, setFollowError] = useState(null);
+  const [followList, setFollowList] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -42,6 +44,7 @@ export default function PublicProfileSheet({ profile, currentUser, onClose }) {
   };
 
   return (
+    <>
     <div className="overlay overlay-profile" onClick={onClose}>
       <div className="sheet sheet-profile" onClick={e => e.stopPropagation()}>
         <div style={{display:"flex", flexDirection:"column", alignItems:"center", padding:"12px 20px 0"}}>
@@ -70,14 +73,14 @@ export default function PublicProfileSheet({ profile, currentUser, onClose }) {
                 ))}
               </div>
               <div style={{display:"flex", gap:24, justifyContent:"center", marginBottom:20}}>
-                <div style={{textAlign:"center"}}>
+                <button onClick={() => setFollowList({ userId: profile.id, type: "following" })} style={{textAlign:"center", background:"none", border:"none", padding:0}}>
                   <div style={{fontSize:16, fontWeight:700, color:G.text}}>{counts.following}</div>
                   <div style={{fontSize:11, color:G.muted}}>Following</div>
-                </div>
-                <div style={{textAlign:"center"}}>
+                </button>
+                <button onClick={() => setFollowList({ userId: profile.id, type: "followers" })} style={{textAlign:"center", background:"none", border:"none", padding:0}}>
                   <div style={{fontSize:16, fontWeight:700, color:G.text}}>{counts.followers}</div>
                   <div style={{fontSize:11, color:G.muted}}>Followers</div>
-                </div>
+                </button>
               </div>
               {followError && (
                 <div style={{background:G.red, color:"#fff", borderRadius:10, padding:"10px 14px", fontSize:13, marginBottom:12}}>{followError}</div>
@@ -95,5 +98,7 @@ export default function PublicProfileSheet({ profile, currentUser, onClose }) {
         </div>
       </div>
     </div>
+    {followList && <FollowListSheet userId={followList.userId} type={followList.type} currentUser={currentUser} onClose={() => setFollowList(null)} onViewProfile={u => { setFollowList(null); onViewProfile?.(u); }} onFollowChange={async () => { const c = await fetchFollowCounts(profile.id); setCounts(c); }}/>}
+    </>
   );
 }

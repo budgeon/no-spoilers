@@ -69,6 +69,7 @@ const phases = [
       { title: "Follow System", desc: "Follow/unfollow users, following/followers lists" },
       { title: "Activity Feed", desc: "See what people you follow are watching — real-time updates" },
       { title: "Lists & Sharing", desc: "Custom lists (e.g. 'Top 10 Dramas'), shareable via link or App Clip" },
+      { title: "Share Profile", desc: "Shareable public profile link (e.g. nospoilers.io/u/username) showing stats, recent watches, and a follow button — requires adding a router (React Router)" },
     ],
   },
   {

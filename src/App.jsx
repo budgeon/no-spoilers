@@ -2,9 +2,9 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { G } from "./constants/tokens.js";
 import { TABS } from "./constants/tabs.js";
 import { LS, SK } from "./constants/storage.js";
-import { hasKey, JEREMY_USER_ID } from "./constants/api.js";
+import { hasKey } from "./constants/api.js";
 import { Auth } from "./auth/Auth.js";
-import { fetchProfile, loadUserData, migrateLocalStorage, followUser } from "./lib/db.js";
+import { fetchProfile, loadUserData, migrateLocalStorage } from "./lib/db.js";
 import { supabase } from "./lib/supabase.js";
 import ShowsTab from "./features/ShowsTab.jsx";
 import MoviesTab from "./features/MoviesTab.jsx";
@@ -50,9 +50,6 @@ export default function App() {
         if (!profile) {
           await supabase.from("profiles").insert({ id: session.user.id, name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "User", avatar: session.user.user_metadata?.avatar || "🎬" });
           profile = await fetchProfile(session.user.id);
-          if (JEREMY_USER_ID && JEREMY_USER_ID !== session.user.id) {
-            await followUser(JEREMY_USER_ID, session.user.id);
-          }
         }
         const data = await loadUserData(session.user.id);
         setWatched(data.watched); setWatchlist(data.watchlist); setRatings(data.ratings); setEpTotals(data.epTotals);
@@ -177,7 +174,7 @@ export default function App() {
       )}
       {viewedProfile&&(
         <Suspense fallback={null}>
-          <PublicProfileSheet profile={viewedProfile} currentUser={user} onClose={()=>setViewedProfile(null)}/>
+          <PublicProfileSheet profile={viewedProfile} currentUser={user} onClose={()=>setViewedProfile(null)} onViewProfile={setViewedProfile}/>
         </Suspense>
       )}
     </>
