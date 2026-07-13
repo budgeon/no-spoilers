@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { G } from "../constants/tokens.js";
 import { fetchPublicProfileStats, fetchFollowCounts, isFollowing, followUser, unfollowUser } from "../lib/db.js";
 import FollowListSheet from "./FollowListSheet.jsx";
+import { useMinLoading } from "../hooks/useMinLoading.js";
 
 const ProfileSkeleton = () => (
   <>
@@ -29,7 +30,7 @@ export default function PublicProfileSheet({ profile, currentUser, onClose, onVi
   const [stats, setStats] = useState(null);
   const [counts, setCounts] = useState({ following: 0, followers: 0 });
   const [following, setFollowing] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { loading, finish } = useMinLoading();
   const [toggling, setToggling] = useState(false);
   const [followError, setFollowError] = useState(null);
   const [followList, setFollowList] = useState(null);
@@ -39,7 +40,7 @@ export default function PublicProfileSheet({ profile, currentUser, onClose, onVi
       fetchPublicProfileStats(profile.id),
       fetchFollowCounts(profile.id),
       isFollowing(currentUser.id, profile.id),
-    ]).then(([s, c, f]) => { setStats(s); setCounts(c); setFollowing(f); setLoading(false); });
+    ]).then(([s, c, f]) => { setStats(s); setCounts(c); setFollowing(f); finish(); });
   }, [profile.id, currentUser.id]);
 
   const handleFollow = async () => {

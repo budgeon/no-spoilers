@@ -4,6 +4,7 @@ import { REACTIONS } from "../constants/mockData.js";
 import { loadComments, postComment, deleteComment, toggleCommentLike } from "../lib/db.js";
 import Center from "../components/Center.jsx";
 import Pill from "../components/Pill.jsx";
+import { useMinLoading } from "../hooks/useMinLoading.js";
 
 const CommentSkeleton = () => (
   <div style={{display:"flex", gap:10, padding:"12px 0", borderBottom:`1px solid ${G.border}`}}>
@@ -20,7 +21,7 @@ const timeAgo = ts => { const s = Math.floor((Date.now()-ts)/1000); if (s < 60) 
 
 export default function CommentsSheet({showId, ep, user, onClose}) {
   const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, begin, finish } = useMinLoading();
   const [text, setText] = useState("");
   const [reaction, setReaction] = useState(null);
   const [spoiler, setSpoiler] = useState(false);
@@ -33,8 +34,8 @@ export default function CommentsSheet({showId, ep, user, onClose}) {
   };
 
   useEffect(() => {
-    setLoading(true);
-    refresh().then(() => setLoading(false));
+    begin();
+    refresh().then(() => finish());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showId, ep.id]);
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { G } from "../constants/tokens.js";
 import { fetchFollowing, fetchFollowers, isFollowing, followUser, unfollowUser } from "../lib/db.js";
+import { useMinLoading } from "../hooks/useMinLoading.js";
 
 const SkeletonRow = () => (
   <div style={{display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderBottom:`1px solid ${G.border}`}}>
@@ -15,7 +16,7 @@ const SkeletonRow = () => (
 
 export default function FollowListSheet({ userId, type, currentUser, onClose, onViewProfile, onFollowChange }) {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, finish } = useMinLoading();
   const [followedIds, setFollowedIds] = useState(new Set());
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export default function FollowListSheet({ userId, type, currentUser, onClose, on
       setUsers(list);
       const checks = await Promise.all(list.map(u => isFollowing(currentUser.id, u.id)));
       setFollowedIds(new Set(list.filter((_, i) => checks[i]).map(u => u.id)));
-      setLoading(false);
+      finish();
     })();
   }, [userId, type, currentUser.id]);
 
