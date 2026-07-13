@@ -7,6 +7,7 @@ import { upsertWatchedItem, deleteWatchedItem, upsertWatchedEpisode, deleteWatch
 import Pill from "../components/Pill.jsx";
 import ProgressBar from "../components/ProgressBar.jsx";
 import EpisodeRow from "../components/EpisodeRow.jsx";
+import { useMinLoading } from "../hooks/useMinLoading.js";
 import CommentsSheet from "./CommentsSheet.jsx";
 
 const DetailSkeleton = () => (
@@ -48,7 +49,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
   const [seasons, setSeasons] = useState([]);
   const [activeSeason, setActiveSeason] = useState(1);
   const [episodes, setEpisodes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, finish } = useMinLoading();
   const [commentEp, setCommentEp] = useState(null);
   const [commentCounts, setCommentCounts] = useState({});
   const [ratingHover, setRatingHover] = useState(0);
@@ -72,7 +73,6 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
     let cancelled = false;
     const ac = new AbortController();
     (async () => {
-      setLoading(true);
       try {
         if (hasKey()) {
           const d = await tmdb(`/${isTV ? "tv" : "movie"}/${tmdbId}`, {}, ac.signal);
@@ -96,7 +96,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
           const nt = {...epTotals, [id]:total}; setEpTotals(nt); upsertEpTotal(id, total);
         }
       }
-      if (!cancelled) setLoading(false);
+      if (!cancelled) finish();
     })();
     return () => { cancelled = true; ac.abort(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
