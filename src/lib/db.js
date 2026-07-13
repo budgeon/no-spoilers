@@ -32,8 +32,8 @@ export async function loadUserData(userId) {
     fetchAllPages((from, to) => supabase.from("ep_totals").select("*").range(from, to)),
   ]);
   const watched = {};
-  wiRows.forEach(row => { watched[row.item_key] = { id: row.item_id, tmdbId: row.tmdb_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
-  weRows.forEach(row => { watched[row.episode_key] = { epId: row.ep_tmdb_id, showId: row.show_id, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from }; });
+  wiRows.forEach(row => { watched[row.item_key] = { id: row.item_id, tmdbId: row.tmdb_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from, runtime: row.runtime || 0 }; });
+  weRows.forEach(row => { watched[row.episode_key] = { epId: row.ep_tmdb_id, showId: row.show_id, watchedAt: new Date(row.watched_at).getTime(), importedFrom: row.imported_from, runtime: row.runtime || 0 }; });
   const watchlist = {};
   wlRows.forEach(row => { watchlist[row.item_key] = { id: row.item_id, type: row.media_type, name: row.name, poster_path: row.poster_path, genre_ids: row.genre_ids || [], vote_average: row.vote_average || 0, addedAt: new Date(row.added_at).getTime(), item: row.item_data, importedFrom: row.imported_from }; });
   const ratings = {};
@@ -44,7 +44,7 @@ export async function loadUserData(userId) {
 }
 
 export async function upsertWatchedItem(userId, key, item) {
-  await supabase.from("watched_items").upsert({ user_id: userId, item_key: key, item_id: String(item.id), media_type: item.type, tmdb_id: item.tmdbId || null, name: item.name, poster_path: item.poster_path || null, genre_ids: item.genre_ids || [], vote_average: item.vote_average || 0, watched_at: new Date(item.watchedAt || Date.now()).toISOString(), imported_from: item.importedFrom || null }, { onConflict: "user_id,item_key" });
+  await supabase.from("watched_items").upsert({ user_id: userId, item_key: key, item_id: String(item.id), media_type: item.type, tmdb_id: item.tmdbId || null, name: item.name, poster_path: item.poster_path || null, genre_ids: item.genre_ids || [], vote_average: item.vote_average || 0, watched_at: new Date(item.watchedAt || Date.now()).toISOString(), imported_from: item.importedFrom || null, runtime: item.runtime || 0 }, { onConflict: "user_id,item_key" });
 }
 
 export async function deleteWatchedItem(userId, key) {
@@ -53,7 +53,7 @@ export async function deleteWatchedItem(userId, key) {
 
 export async function upsertWatchedEpisode(userId, key, data) {
   const snMatch = key.match(/_s(\d+)e(\d+)$/);
-  await supabase.from("watched_episodes").upsert({ user_id: userId, episode_key: key, show_id: String(data.showId), season_number: snMatch ? parseInt(snMatch[1]) : null, episode_number: snMatch ? parseInt(snMatch[2]) : null, ep_tmdb_id: data.epId || null, watched_at: new Date(data.watchedAt || Date.now()).toISOString(), imported_from: data.importedFrom || null }, { onConflict: "user_id,episode_key" });
+  await supabase.from("watched_episodes").upsert({ user_id: userId, episode_key: key, show_id: String(data.showId), season_number: snMatch ? parseInt(snMatch[1]) : null, episode_number: snMatch ? parseInt(snMatch[2]) : null, ep_tmdb_id: data.epId || null, watched_at: new Date(data.watchedAt || Date.now()).toISOString(), imported_from: data.importedFrom || null, runtime: data.runtime || 0 }, { onConflict: "user_id,episode_key" });
 }
 
 export async function deleteWatchedEpisode(userId, key) {
