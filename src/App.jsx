@@ -14,6 +14,7 @@ import Confetti from "./features/Confetti.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import Center from "./components/Center.jsx";
 import Spinner from "./components/Spinner.jsx";
+import LoadingScreen from "./components/LoadingScreen.jsx";
 
 const DetailSheet        = lazy(() => import("./features/DetailSheet.jsx"));
 const Importer           = lazy(() => import("./features/Importer.jsx"));
@@ -61,16 +62,16 @@ export default function App() {
 
   const handleSelect=item=>{ setSelected(item); const r=LS.get(SK.REC,[]); LS.set(SK.REC,[{...item,viewedAt:Date.now()},...r.filter(x=>!(x.id===item.id&&x.media_type===item.media_type))].slice(0,12)); };
 
-  if (authLoading) return <Center py={200}><Spinner/></Center>;
+  if (authLoading) return <LoadingScreen/>;
 
   if (resettingPassword) return (
-    <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+    <Suspense fallback={<LoadingScreen/>}>
       <ResetPasswordScreen/>
     </Suspense>
   );
 
   if(!user) return (
-    <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+    <Suspense fallback={<LoadingScreen/>}>
       <AuthScreen/>
     </Suspense>
   );
@@ -106,7 +107,7 @@ export default function App() {
             {tab==="movies"&&<MoviesTab {...sharedProps}/>}
             {tab==="discover"&&<DiscoverTab watched={watched} watchlist={watchlist} setWatchlist={setWatchlist} onSelect={handleSelect} user={user}/>}
             {tab==="friends"&&(
-              <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+              <Suspense fallback={<LoadingScreen/>}>
                 <SocialTab user={user} watched={watched} onViewProfile={setViewedProfile}/>
               </Suspense>
             )}

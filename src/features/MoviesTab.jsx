@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { G } from "../constants/tokens.js";
 import { useWatchlistToggle } from "../hooks/useWatchlistToggle.js";
 import Center from "../components/Center.jsx";
+import LoadingScreen from "../components/LoadingScreen.jsx";
 import PosterCard from "../components/PosterCard.jsx";
 
 const WATCHED_SORT_OPTS  = [{k:"watched",l:"Recent"},{k:"az",l:"A–Z"},{k:"rating",l:"Rating"}];
@@ -12,15 +13,17 @@ export default function MoviesTab({watched, watchlist, setWatchlist, ratings, on
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("watched");
   const toggleWL = useWatchlistToggle(watchlist, setWatchlist, user.id);
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
 
   const applySearch = (items, q) => { if (!q.trim()) return items; const lq = q.toLowerCase(); return items.filter(x => (x.name || x.title || "").toLowerCase().includes(lq)); };
   const applySort = (items, s) => { const r = [...items]; if (s === "az") r.sort((a,b) => (a.name||a.title||"").localeCompare(b.name||b.title||"")); else if (s === "rating") { const score = x => ratings[`${x.type||x.media_type}_${x.id}`] || (x.vote_average ? x.vote_average/2 : 0); r.sort((a,b) => score(b)-score(a)); } else if (s === "watched") r.sort((a,b) => (b.watchedAt||0)-(a.watchedAt||0)); else if (s === "added") r.sort((a,b) => (b.addedAt||0)-(a.addedAt||0)); return r; };
 
   const watchedMovies = useMemo(
-    () => Object.entries(watched).filter(([k]) => !k.startsWith("ep_") && watched[k]?.type === "movie").map(([,v]) => v),
-    [watched]
+    () => !ready ? [] : Object.entries(watched).filter(([k]) => !k.startsWith("ep_") && watched[k]?.type === "movie").map(([,v]) => v),
+    [ready, watched]
   );
-  const wlMovies = useMemo(() => Object.values(watchlist).filter(x => x.type === "movie"), [watchlist]);
+  const wlMovies = useMemo(() => !ready ? [] : Object.values(watchlist).filter(x => x.type === "movie"), [ready, watchlist]);
 
   const sortOpts = tab === "watchlist" ? WATCHLIST_SORT_OPTS : WATCHED_SORT_OPTS;
   const activeSort = tab === "watchlist" ? (sort === "watched" ? "added" : sort) : sort;
@@ -29,6 +32,8 @@ export default function MoviesTab({watched, watchlist, setWatchlist, ratings, on
 
   const display = tab === "watched" ? visWatched : visWatchlist.map(x => ({...x, ...x.item, id: x.id}));
   const counts = {watched: visWatched.length, watchlist: visWatchlist.length};
+
+  if (!ready) return <LoadingScreen/>;
 
   return (
     <div>
