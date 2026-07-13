@@ -6,9 +6,9 @@ import { updateProfile } from "../lib/db.js";
 import Center from "../components/Center.jsx";
 import ProgressBar from "../components/ProgressBar.jsx";
 
-function StatBox({label, value, sub}) {
+function StatBox({label, value, sub, onClick}) {
   return (
-    <div className="stat-box">
+    <div className="stat-box" onClick={onClick} style={{cursor: onClick ? "pointer" : undefined}}>
       <div className="stat-value">{value}</div>
       <div className="stat-label">{label}</div>
       {sub && <div className="stat-sub">{sub}</div>}
@@ -16,7 +16,7 @@ function StatBox({label, value, sub}) {
   );
 }
 
-export default function ProfileTab({user, watched, ratings, watchlist, epTotals, onLogout, onImport, onProfileUpdate}) {
+export default function ProfileTab({user, watched, ratings, watchlist, epTotals, onLogout, onImport, onProfileUpdate, onNavigate}) {
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [draftAvatar, setDraftAvatar] = useState("");
@@ -140,8 +140,8 @@ export default function ProfileTab({user, watched, ratings, watchlist, epTotals,
       </div>
 
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16}}>
-        <StatBox label="TV Shows" value={tvCount}/>
-        <StatBox label="Movies" value={mvCount}/>
+        <StatBox label="TV Shows" value={tvCount} onClick={() => onNavigate("shows")}/>
+        <StatBox label="Movies" value={mvCount} onClick={() => onNavigate("movies")}/>
         <StatBox label="Avg Rating" value={avg ? `${avg}★` : "—"}/>
         <StatBox label="Watchlist" value={Object.keys(watchlist).length}/>
       </div>

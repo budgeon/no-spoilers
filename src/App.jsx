@@ -110,7 +110,7 @@ export default function App() {
                 <SocialTab user={user} watched={watched} onViewProfile={setViewedProfile}/>
               </Suspense>
             )}
-            {tab==="profile"&&<ProfileTab user={user} watched={watched} ratings={ratings} watchlist={watchlist} epTotals={epTotals} onLogout={()=>Auth.logout()} onImport={()=>setShowImporter(true)} onProfileUpdate={u=>setUser(prev=>({...prev,...u}))}/>}
+            {tab==="profile"&&<ProfileTab user={user} watched={watched} ratings={ratings} watchlist={watchlist} epTotals={epTotals} onLogout={()=>Auth.logout()} onImport={()=>setShowImporter(true)} onProfileUpdate={u=>setUser(prev=>({...prev,...u}))} onNavigate={setTab}/>}
           </ErrorBoundary>
         </div>
 
