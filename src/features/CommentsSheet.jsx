@@ -4,7 +4,17 @@ import { REACTIONS } from "../constants/mockData.js";
 import { loadComments, postComment, deleteComment, toggleCommentLike } from "../lib/db.js";
 import Center from "../components/Center.jsx";
 import Pill from "../components/Pill.jsx";
-import Spinner from "../components/Spinner.jsx";
+
+const CommentSkeleton = () => (
+  <div style={{display:"flex", gap:10, padding:"12px 0", borderBottom:`1px solid ${G.border}`}}>
+    <div style={{width:32, height:32, borderRadius:"50%", flexShrink:0}} className="poster-img-wrap"/>
+    <div style={{flex:1, display:"flex", flexDirection:"column", gap:6, paddingTop:2}}>
+      <div style={{height:11, width:"35%", borderRadius:4}} className="poster-img-wrap"/>
+      <div style={{height:13, width:"85%", borderRadius:4}} className="poster-img-wrap"/>
+      <div style={{height:13, width:"60%", borderRadius:4}} className="poster-img-wrap"/>
+    </div>
+  </div>
+);
 
 const timeAgo = ts => { const s = Math.floor((Date.now()-ts)/1000); if (s < 60) return "just now"; if (s < 3600) return `${Math.floor(s/60)}m`; if (s < 86400) return `${Math.floor(s/3600)}h`; return `${Math.floor(s/86400)}d`; };
 
@@ -61,9 +71,9 @@ export default function CommentsSheet({showId, ep, user, onClose}) {
           </div>
         </div>
 
-        <div style={{flex:1, overflowY:"auto", padding:"12px 20px"}}>
+        <div style={{flex:1, overflowY: loading ? "hidden" : "auto", padding:"12px 20px"}}>
           {loading
-            ? <Center><Spinner/></Center>
+            ? <>{Array.from({length:5}).map((_,i) => <CommentSkeleton key={i}/>)}</>
             : comments.length === 0
               ? <Center><div style={{textAlign:"center", color:G.dim, fontSize:13}}>No comments yet.<br/>Be the first to react!</div></Center>
               : comments.map(c => {

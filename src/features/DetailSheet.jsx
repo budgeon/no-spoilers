@@ -4,12 +4,44 @@ import { LS, SK } from "../constants/storage.js";
 import { tmdb, TMDB_IMG, hasKey } from "../constants/api.js";
 import { useWatchlistToggle } from "../hooks/useWatchlistToggle.js";
 import { upsertWatchedItem, deleteWatchedItem, upsertWatchedEpisode, deleteWatchedEpisode, upsertRating, deleteRating, upsertEpTotal } from "../lib/db.js";
-import Center from "../components/Center.jsx";
-import Spinner from "../components/Spinner.jsx";
 import Pill from "../components/Pill.jsx";
 import ProgressBar from "../components/ProgressBar.jsx";
 import EpisodeRow from "../components/EpisodeRow.jsx";
 import CommentsSheet from "./CommentsSheet.jsx";
+
+const DetailSkeleton = () => (
+  <div style={{padding:"0 20px"}}>
+    <div style={{display:"flex", gap:16, marginTop:-60, marginBottom:20, position:"relative", zIndex:1}}>
+      <div style={{width:90, borderRadius:10, aspectRatio:"2/3", flexShrink:0}} className="poster-img-wrap"/>
+      <div style={{flex:1, paddingTop:64, display:"flex", flexDirection:"column", gap:8}}>
+        <div style={{height:20, width:"75%", borderRadius:6}} className="poster-img-wrap"/>
+        <div style={{height:20, width:"50%", borderRadius:6}} className="poster-img-wrap"/>
+        <div style={{display:"flex", gap:6}}>
+          {Array.from({length:3}).map((_,i) => <div key={i} style={{height:22, width:52, borderRadius:20}} className="poster-img-wrap"/>)}
+        </div>
+      </div>
+    </div>
+    <div style={{display:"flex", flexDirection:"column", gap:6, marginBottom:20}}>
+      {Array.from({length:3}).map((_,i) => <div key={i} style={{height:13, width: i === 2 ? "55%" : "100%", borderRadius:4}} className="poster-img-wrap"/>)}
+    </div>
+    <div style={{display:"flex", gap:10, marginBottom:24}}>
+      <div style={{flex:1, height:44, borderRadius:10}} className="poster-img-wrap"/>
+      <div style={{width:48, height:44, borderRadius:10}} className="poster-img-wrap"/>
+    </div>
+    <div style={{display:"flex", gap:4, marginBottom:20}}>
+      {Array.from({length:5}).map((_,i) => <div key={i} style={{width:28, height:28, borderRadius:4}} className="poster-img-wrap"/>)}
+    </div>
+    {Array.from({length:4}).map((_,i) => (
+      <div key={i} style={{display:"flex", gap:12, padding:"10px 0", borderBottom:`1px solid ${G.border}`}}>
+        <div style={{width:28, height:28, borderRadius:"50%", flexShrink:0}} className="poster-img-wrap"/>
+        <div style={{flex:1, display:"flex", flexDirection:"column", gap:5, justifyContent:"center"}}>
+          <div style={{height:13, width:"70%", borderRadius:4}} className="poster-img-wrap"/>
+          <div style={{height:10, width:"30%", borderRadius:4}} className="poster-img-wrap"/>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 export default function DetailSheet({item, onClose, watched, setWatched, watchlist, setWatchlist, ratings, setRatings, epTotals, setEpTotals, onFinish, user}) {
   const [detail, setDetail] = useState(null);
@@ -134,7 +166,7 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
             <button onClick={onClose} style={{position:"absolute", top:16, right:16, width:32, height:32, borderRadius:"50%", background:"rgba(0,0,0,0.6)", color:"#fff", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(4px)"}}>✕</button>
           </div>
 
-          {loading ? <Center><Spinner/></Center> : (
+          {loading ? <DetailSkeleton/> : (
             <div style={{padding:"0 20px 100px"}}>
               <div style={{display:"flex", gap:16, marginTop:-60, marginBottom:20, position:"relative", zIndex:1}}>
                 <div style={{width:90, borderRadius:10, overflow:"hidden", background:"#D8D0C0", aspectRatio:"2/3", flexShrink:0, boxShadow:"0 8px 24px rgba(0,0,0,0.15)"}}>

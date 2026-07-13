@@ -1,9 +1,29 @@
 import { useState, useEffect } from "react";
 import { G } from "../constants/tokens.js";
 import { fetchPublicProfileStats, fetchFollowCounts, isFollowing, followUser, unfollowUser } from "../lib/db.js";
-import Center from "../components/Center.jsx";
-import Spinner from "../components/Spinner.jsx";
 import FollowListSheet from "./FollowListSheet.jsx";
+
+const ProfileSkeleton = () => (
+  <>
+    <div style={{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:20}}>
+      {Array.from({length:3}).map((_,i) => (
+        <div key={i} className="stat-box">
+          <div style={{height:24, width:"50%", borderRadius:6, margin:"0 auto 6px"}} className="poster-img-wrap"/>
+          <div style={{height:11, width:"70%", borderRadius:4, margin:"0 auto"}} className="poster-img-wrap"/>
+        </div>
+      ))}
+    </div>
+    <div style={{display:"flex", gap:24, justifyContent:"center", marginBottom:20}}>
+      {Array.from({length:2}).map((_,i) => (
+        <div key={i} style={{textAlign:"center"}}>
+          <div style={{height:16, width:32, borderRadius:4, margin:"0 auto 4px"}} className="poster-img-wrap"/>
+          <div style={{height:11, width:52, borderRadius:4, margin:"0 auto"}} className="poster-img-wrap"/>
+        </div>
+      ))}
+    </div>
+    <div style={{height:44, borderRadius:12}} className="poster-img-wrap"/>
+  </>
+);
 
 export default function PublicProfileSheet({ profile, currentUser, onClose, onViewProfile }) {
   const [stats, setStats] = useState(null);
@@ -62,7 +82,7 @@ export default function PublicProfileSheet({ profile, currentUser, onClose, onVi
         </div>
 
         <div style={{padding:"20px"}}>
-          {loading ? <Center py={60}><Spinner/></Center> : (
+          {loading ? <ProfileSkeleton/> : (
             <>
               <div style={{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:20}}>
                 {[{label:"TV Shows",value:stats.shows},{label:"Movies",value:stats.movies},{label:"Episodes",value:stats.episodes}].map(s => (
