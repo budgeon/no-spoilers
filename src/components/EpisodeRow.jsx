@@ -1,14 +1,20 @@
-import { memo } from "react";
+import { memo, useTransition } from "react";
+import Spinner from "./Spinner.jsx";
 
-export default memo(function EpisodeRow({ep, showId, watched, onToggle, onOpenComments, commentCount = 0}) {
-  const newKey = `ep_show${showId}_s${ep.season_number}e${ep.episode_number}`;
-  const oldKey = `ep_show${showId}_ep${ep.id}`;
-  const ew = !!(watched[newKey] || watched[oldKey]);
+export default memo(function EpisodeRow({ep, isWatched, onToggle, onOpenComments, commentCount = 0}) {
+  const [pending, startTransition] = useTransition();
+
+  const handleToggle = () => {
+    startTransition(() => onToggle(ep));
+  };
+
   return (
     <div className="episode-row">
-      <button onClick={() => onToggle(ep)} className={`episode-check${ew ? " watched" : ""}`}>✓</button>
+      <button onClick={handleToggle} disabled={pending} className={`episode-check${isWatched && !pending ? " watched" : ""}`}>
+        {pending ? <Spinner size={14}/> : "✓"}
+      </button>
       <div style={{flex:1, cursor:"pointer", minWidth:0}} onClick={() => onOpenComments(ep)}>
-        <div className={`episode-title${ew ? " watched" : ""}`}>
+        <div className={`episode-title${isWatched ? " watched" : ""}`}>
           <span className="episode-num">E{ep.episode_number}</span>{ep.name}
         </div>
         <div style={{display:"flex", gap:8, marginTop:3}}>
