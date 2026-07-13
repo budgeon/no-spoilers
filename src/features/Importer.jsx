@@ -43,7 +43,8 @@ export default function Importer({onClose, watched, setWatched, watchlist, setWa
           const cleanName = yearMatch ? entry.name.slice(0, yearMatch.index).trim() : entry.name;
           const ep = entry.type === "movie" ? "/search/movie" : "/search/tv";
           const d = await tmdb(ep, yearMatch ? {query: cleanName, [entry.type === "movie" ? "primary_release_year" : "first_air_date_year"]: yearMatch[1]} : {query: cleanName});
-          const hit = d.results?.[0] ?? (yearMatch ? (await tmdb(ep, {query: cleanName})).results?.[0] : null);
+          const pickBest = rs => { if (!rs?.length) return null; const lower = cleanName.toLowerCase(); return rs.find(r => (r.name || r.title || '').toLowerCase() === lower) ?? rs[0]; };
+          const hit = pickBest(d.results) ?? (yearMatch ? pickBest((await tmdb(ep, {query: cleanName})).results) : null);
           if (hit) { const enriched = {poster_path: hit.poster_path, genre_ids: hit.genre_ids || [], vote_average: hit.vote_average || 0, tmdbId: hit.id}; if (entry.type === "tv") { try { const det = await tmdb(`/tv/${hit.id}`); if (det.number_of_episodes > 0) { enriched.episodeCount = det.number_of_episodes; newEpTotals[entry.id] = det.number_of_episodes; } } catch {} } if (nw[wk]) nw[wk] = {...nw[wk], ...enriched}; if (nwl[wk]) nwl[wk] = applyToNwl(nwl[wk], enriched); cache[ck] = {...enriched, ts: Date.now()}; }
         } catch { /* keep entry as-is */ }
       }));
