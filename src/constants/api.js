@@ -1,5 +1,6 @@
 const DEV_KEY = import.meta.env.VITE_TMDB_API_KEY || "";
 const IS_DEV = import.meta.env.DEV;
+export const JEREMY_USER_ID = import.meta.env.VITE_JEREMY_USER_ID || "";
 export const TMDB_IMG = "https://image.tmdb.org/t/p";
 
 export const tmdb = async (path, params = {}, signal) => {
