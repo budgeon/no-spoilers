@@ -32,3 +32,6 @@ vite.config.js.timestamp-*
 # GDPR export data and test import files
 docs/gdpr-data/
 docs/test-*.csv
+
+# Supabase admin runbooks (contain user IDs)
+docs/supabase-delete-user-*.md

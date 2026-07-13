@@ -41,7 +41,16 @@ export default function ProfileTab({user, watched, ratings, watchlist, epTotals,
     const rv = Object.values(ratings).filter(Boolean);
     return rv.length ? (rv.reduce((a,b) => a+b, 0) / rv.length).toFixed(1) : null;
   }, [ratings]);
-  const daysWatched = useMemo(() => ((epCount * 45) / 60 / 24).toFixed(1), [epCount]);
+  const tvMinutes = useMemo(
+    () => Object.entries(watched).filter(([k]) => k.startsWith("ep_")).reduce((sum, [, ep]) => sum + (ep.runtime > 0 ? ep.runtime : 45), 0),
+    [watched]
+  );
+  const tvDays = useMemo(() => (tvMinutes / 60 / 24).toFixed(1), [tvMinutes]);
+  const movieMinutes = useMemo(
+    () => titles.filter(t => t.type === "movie").reduce((sum, m) => sum + (m.runtime > 0 ? m.runtime : 100), 0),
+    [titles]
+  );
+  const movieDays = useMemo(() => (movieMinutes / 60 / 24).toFixed(1), [movieMinutes]);
   const topGenres = useMemo(() => {
     const genreCounts = {};
     titles.forEach(t => (t.genre_ids || []).forEach(gid => { const n = GENRE_MAP[gid]; if (n) genreCounts[n] = (genreCounts[n] || 0) + 1; }));
@@ -117,10 +126,17 @@ export default function ProfileTab({user, watched, ratings, watchlist, epTotals,
         </div>
       )}
 
-      <div style={{background:`linear-gradient(135deg,${G.accentDim},rgba(107,140,174,0.03))`, border:`1px solid rgba(107,140,174,0.2)`, borderRadius:16, padding:"20px", marginBottom:16, textAlign:"center"}}>
-        <div style={{fontSize:42, fontWeight:700, color:G.accent, lineHeight:1}}>{daysWatched}</div>
-        <div style={{fontSize:14, color:G.muted, marginTop:4}}>days of TV watched</div>
-        <div style={{fontSize:11, color:G.dim, marginTop:2}}>{epCount} episodes · {mvCount} movies</div>
+      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16}}>
+        <div style={{background:`linear-gradient(135deg,${G.accentDim},rgba(107,140,174,0.03))`, border:`1px solid rgba(107,140,174,0.2)`, borderRadius:16, padding:"16px", textAlign:"center"}}>
+          <div style={{fontSize:36, fontWeight:700, color:G.accent, lineHeight:1}}>{tvDays}</div>
+          <div style={{fontSize:13, color:G.muted, marginTop:4}}>days of TV</div>
+          <div style={{fontSize:11, color:G.dim, marginTop:2}}>{epCount} episodes</div>
+        </div>
+        <div style={{background:`linear-gradient(135deg,${G.accentDim},rgba(107,140,174,0.03))`, border:`1px solid rgba(107,140,174,0.2)`, borderRadius:16, padding:"16px", textAlign:"center"}}>
+          <div style={{fontSize:36, fontWeight:700, color:G.accent, lineHeight:1}}>{movieDays}</div>
+          <div style={{fontSize:13, color:G.muted, marginTop:4}}>days of movies</div>
+          <div style={{fontSize:11, color:G.dim, marginTop:2}}>{mvCount} movies</div>
+        </div>
       </div>
 
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16}}>

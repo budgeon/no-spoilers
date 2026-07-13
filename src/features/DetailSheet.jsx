@@ -83,14 +83,14 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
       setWatched(w); deleteWatchedItem(user.id, wk);
       if (ratings[wk]) { const r = {...ratings}; delete r[wk]; setRatings(r); deleteRating(user.id, wk); }
     }
-    else { const entry = {id, type: item.media_type, name, poster_path: item.poster_path, genre_ids: item.genre_ids || [], vote_average: detail?.vote_average || item.vote_average || 0, watchedAt: Date.now()}; w[wk] = entry; setWatched(w); upsertWatchedItem(user.id, wk, entry); }
+    else { const entry = {id, type: item.media_type, name, poster_path: item.poster_path, genre_ids: item.genre_ids || [], vote_average: detail?.vote_average || item.vote_average || 0, watchedAt: Date.now(), runtime: detail?.runtime || 0}; w[wk] = entry; setWatched(w); upsertWatchedItem(user.id, wk, entry); }
   };
 
   const toggleEp = ep => {
     const newK = `ep_show${id}_s${ep.season_number}e${ep.episode_number}`; const oldK = `ep_show${id}_ep${ep.id}`;
     const w = {...watched}; const was = !!(w[newK] || w[oldK]);
     if (was) { delete w[newK]; delete w[oldK]; setWatched(w); deleteWatchedEpisode(user.id, newK); deleteWatchedEpisode(user.id, oldK); }
-    else { const entry = {epId: ep.id, showId: id, watchedAt: Date.now()}; w[newK] = entry; setWatched(w); upsertWatchedEpisode(user.id, newK, entry); const tot = epTotals[id] || 0; const nc = Object.keys(w).filter(x => x.startsWith(`ep_show${id}_`)).length; if (tot > 0 && nc >= tot) onFinish(name); }
+    else { const entry = {epId: ep.id, showId: id, watchedAt: Date.now(), runtime: ep.runtime || 0}; w[newK] = entry; setWatched(w); upsertWatchedEpisode(user.id, newK, entry); const tot = epTotals[id] || 0; const nc = Object.keys(w).filter(x => x.startsWith(`ep_show${id}_`)).length; if (tot > 0 && nc >= tot) onFinish(name); }
   };
 
   const setRate = s => { const r = {...ratings, [wk]: s}; setRatings(r); upsertRating(user.id, wk, s); };
