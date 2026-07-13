@@ -36,6 +36,8 @@ export default function App() {
   const [showImporter,setShowImporter]=useState(false);
   const [viewedProfile,setViewedProfile]=useState(null);
   const [resettingPassword,setResettingPassword]=useState(false);
+  const [showAuthMode,setShowAuthMode]=useState(false);
+  const [authPrompt,setAuthPrompt]=useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = Auth.onAuthChange(async (event, session) => {
@@ -70,10 +72,43 @@ export default function App() {
     </Suspense>
   );
 
-  if(!user) return (
+  if (!user && showAuthMode) return (
     <Suspense fallback={<LoadingScreen/>}>
       <AuthScreen/>
     </Suspense>
+  );
+
+  if (!user) return (
+    <>
+      {authPrompt && (
+        <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={()=>setAuthPrompt(false)}>
+          <div style={{background:G.surface,borderRadius:20,padding:"32px 28px",maxWidth:320,width:"100%",textAlign:"center",animation:"popIn 0.2s ease"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:40,marginBottom:12}}>🎬</div>
+            <div style={{fontSize:18,fontWeight:700,color:G.text,marginBottom:8}}>Sign in to NoSpoilers</div>
+            <div style={{fontSize:13,color:G.muted,marginBottom:24,lineHeight:1.5}}>Track shows & movies, rate what you've watched, and share with friends.</div>
+            <button onClick={()=>setShowAuthMode(true)} style={{width:"100%",padding:"12px",background:G.accent,color:"#000",borderRadius:10,fontSize:14,fontWeight:700,border:"none",marginBottom:10}}>Sign In / Sign Up</button>
+            <button onClick={()=>setAuthPrompt(false)} style={{width:"100%",padding:"10px",background:"transparent",color:G.dim,borderRadius:10,fontSize:13,border:"none"}}>Maybe Later</button>
+          </div>
+        </div>
+      )}
+      <div style={{maxWidth:G.MAX_W,margin:"0 auto",minHeight:"100vh",position:"relative",background:G.bg}}>
+        <div style={{position:"sticky",top:0,zIndex:50,background:G.bg,borderBottom:`1px solid ${G.border}`,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{fontSize:22,fontWeight:800,fontFamily:"'Outfit', sans-serif",color:G.text,letterSpacing:"-0.02em"}}>No<span style={{color:G.accent}}>Spoilers</span></div>
+          <button onClick={()=>setShowAuthMode(true)} style={{padding:"7px 16px",background:G.accent,color:"#000",borderRadius:20,fontSize:13,fontWeight:700,border:"none"}}>Sign In</button>
+        </div>
+        <div style={{padding:"16px 16px 90px"}}>
+          <DiscoverTab watched={{}} watchlist={{}} setWatchlist={()=>{}} onSelect={()=>setAuthPrompt(true)} user={null} onAuthRequired={()=>setAuthPrompt(true)}/>
+        </div>
+        <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:G.MAX_W,background:G.tabBar,borderTop:`1px solid ${G.border}`,display:"flex",zIndex:50}}>
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>t.id==="discover"?null:setAuthPrompt(true)} style={{flex:1,padding:"10px 0 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:4,border:"none",background:"transparent",color:t.id==="discover"?G.accent:G.dim,transition:"color 0.15s"}}>
+              <span style={{fontSize:22,lineHeight:1}}>{t.icon}</span>
+              <span style={{fontSize:10,fontWeight:t.id==="discover"?600:400}}>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 
   const sharedProps={watched,setWatched,watchlist,setWatchlist,ratings,setRatings,epTotals,setEpTotals,onSelect:handleSelect,onFinish:n=>{setConfetti(n);},user};

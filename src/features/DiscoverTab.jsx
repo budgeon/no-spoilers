@@ -8,7 +8,7 @@ import Center from "../components/Center.jsx";
 import Spinner from "../components/Spinner.jsx";
 import PosterCard from "../components/PosterCard.jsx";
 
-export default function DiscoverTab({watched, watchlist, setWatchlist, onSelect, user}) {
+export default function DiscoverTab({watched, watchlist, setWatchlist, onSelect, user, onAuthRequired = () => {}}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -16,7 +16,7 @@ export default function DiscoverTab({watched, watchlist, setWatchlist, onSelect,
   const [genre, setGenre] = useState(null);
   const searchAc = useRef(null);
 
-  const toggleWL = useWatchlistToggle(watchlist, setWatchlist, user.id);
+  const toggleWL = useWatchlistToggle(watchlist, setWatchlist, user?.id);
 
   const { data: rawTrending } = useTMDB(
     async (signal) => {
@@ -90,7 +90,7 @@ export default function DiscoverTab({watched, watchlist, setWatchlist, onSelect,
             <div style={{marginBottom:20}}>
               <div style={{fontSize:13, fontWeight:600, color:G.text, marginBottom:12}}>🔥 Trending</div>
               <div className="trending-grid">
-                {trending.slice(0,4).map(item => <PosterCard key={`t_${item.media_type}_${item.id}`} item={item} onClick={() => onSelect(item)} epProgress={null} watched={!!watched[`${item.media_type}_${item.id}`]} inWL={!!watchlist[`${item.media_type}_${item.id}`]} onWL={() => toggleWL(item)}/>)}
+                {trending.slice(0,4).map(item => <PosterCard key={`t_${item.media_type}_${item.id}`} item={item} onClick={() => !user ? onAuthRequired() : onSelect(item)} epProgress={null} watched={!!watched[`${item.media_type}_${item.id}`]} inWL={!!watchlist[`${item.media_type}_${item.id}`]} onWL={() => !user ? onAuthRequired() : toggleWL(item)}/>)}
               </div>
             </div>
           )}
@@ -101,7 +101,7 @@ export default function DiscoverTab({watched, watchlist, setWatchlist, onSelect,
       {(searching || bLoading) && !query.trim()
         ? null
         : <div className="poster-grid">
-            {display.map(item => <PosterCard key={`${item.media_type}_${item.id}`} item={item} onClick={() => onSelect(item)} epProgress={null} watched={!!watched[`${item.media_type}_${item.id}`]} inWL={!!watchlist[`${item.media_type}_${item.id}`]} onWL={() => toggleWL(item)}/>)}
+            {display.map(item => <PosterCard key={`${item.media_type}_${item.id}`} item={item} onClick={() => !user ? onAuthRequired() : onSelect(item)} epProgress={null} watched={!!watched[`${item.media_type}_${item.id}`]} inWL={!!watchlist[`${item.media_type}_${item.id}`]} onWL={() => !user ? onAuthRequired() : toggleWL(item)}/>)}
           </div>
       }
       {(searching || bLoading) && <Center><Spinner/></Center>}
