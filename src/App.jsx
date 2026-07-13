@@ -118,11 +118,13 @@ export default function App() {
       {confetti&&(
         <>
           <Confetti onDone={()=>setConfetti(null)}/>
-          <div style={{position:"fixed",top:"30%",left:"50%",transform:"translateX(-50%)",zIndex:1000,background:G.surface,border:`1px solid ${G.border}`,borderRadius:20,padding:"28px 32px",textAlign:"center",animation:"popIn 0.3s ease",boxShadow:"0 24px 60px rgba(0,0,0,0.6)",minWidth:240}}>
+          <div style={{position:"fixed",inset:0,zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
+          <div style={{pointerEvents:"auto",background:G.surface,border:`1px solid ${G.border}`,borderRadius:20,padding:"28px 32px",textAlign:"center",animation:"popIn 0.3s ease",boxShadow:"0 24px 60px rgba(0,0,0,0.6)",minWidth:240}}>
             <div style={{fontSize:52,marginBottom:8}}>🎉</div>
             <div style={{fontSize:20,fontWeight:700,color:G.text,marginBottom:4}}>Show Complete!</div>
             <div style={{fontSize:13,color:G.muted,marginBottom:16}}>{confetti}</div>
             <button onClick={()=>setConfetti(null)} style={{padding:"9px 24px",background:G.accent,color:"#000",borderRadius:9,fontSize:13,fontWeight:700,border:"none"}}>Nice! 🙌</button>
+          </div>
           </div>
         </>
       )}
