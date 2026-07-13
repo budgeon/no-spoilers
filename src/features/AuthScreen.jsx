@@ -78,7 +78,7 @@ export default function AuthScreen() {
       </div>
       <div style={{width:"100%", maxWidth:400, position:"relative", animation:"fadeUp 0.4s ease"}}>
         <div style={{textAlign:"center", marginBottom:32}}>
-          <div style={{fontSize:42, fontWeight:800, color:G.text, letterSpacing:"-0.03em"}}>No<span style={{color:G.accent}}>Spoilers</span></div>
+          <div style={{fontSize:42, fontWeight:800, fontFamily:"'Outfit', sans-serif", color:G.text, letterSpacing:"-0.03em"}}>No<span style={{color:G.accent}}>Spoilers</span></div>
           <div style={{fontSize:13, color:G.muted, marginTop:6}}>Track shows & movies with your community</div>
         </div>
         <div style={{background:G.surface, borderRadius:20, padding:"28px 24px"}}>
