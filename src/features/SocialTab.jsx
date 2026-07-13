@@ -4,6 +4,7 @@ import { fetchActivityFeed, fetchFollowCounts, fetchFollowing, followUser, unfol
 import Center from "../components/Center.jsx";
 import Spinner from "../components/Spinner.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
+import FollowListSheet from "./FollowListSheet.jsx";
 
 const timeAgo = ts => { const s = Math.floor((Date.now()-ts)/1000); if (s < 60) return "just now"; if (s < 3600) return `${Math.floor(s/60)}m`; if (s < 86400) return `${Math.floor(s/3600)}h`; return `${Math.floor(s/86400)}d`; };
 
@@ -38,6 +39,7 @@ export default function SocialTab({ user, watched, onViewProfile }) {
   const [searching, setSearching] = useState(false);
   const [followedIds, setFollowedIds] = useState(new Set());
   const [followError, setFollowError] = useState(null);
+  const [followList, setFollowList] = useState(null);
   const searchAc = useRef(null);
 
   const loadFeed = useCallback(async () => {
@@ -85,17 +87,18 @@ export default function SocialTab({ user, watched, onViewProfile }) {
   if (loading) return <LoadingScreen/>;
 
   return (
+    <>
     <div>
       <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, paddingTop:4}}>
         <div style={{display:"flex", gap:24}}>
-          <div style={{textAlign:"center"}}>
+          <button onClick={() => setFollowList({ userId: user.id, type: "following" })} style={{textAlign:"center", background:"none", border:"none", padding:0}}>
             <div style={{fontSize:18, fontWeight:700, color:G.accent}}>{counts.following}</div>
             <div style={{fontSize:11, color:G.muted}}>Following</div>
-          </div>
-          <div style={{textAlign:"center"}}>
+          </button>
+          <button onClick={() => setFollowList({ userId: user.id, type: "followers" })} style={{textAlign:"center", background:"none", border:"none", padding:0}}>
             <div style={{fontSize:18, fontWeight:700, color:G.accent}}>{counts.followers}</div>
             <div style={{fontSize:11, color:G.muted}}>Followers</div>
-          </div>
+          </button>
         </div>
         <button
           onClick={() => { setShowSearch(s => !s); setSearchQuery(""); setSearchResults([]); }}
@@ -152,5 +155,7 @@ export default function SocialTab({ user, watched, onViewProfile }) {
         </>
       )}
     </div>
+    {followList && <FollowListSheet userId={followList.userId} type={followList.type} currentUser={user} onClose={() => setFollowList(null)} onViewProfile={p => { setFollowList(null); onViewProfile(p); }} onFollowChange={() => loadFeed()}/>}
+    </>
   );
 }
