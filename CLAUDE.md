@@ -18,8 +18,9 @@ There is no test suite.
 Without a key the app runs in **Demo mode** using `src/constants/mockData.js`. To enable live data, create `.env`:
 ```
 VITE_TMDB_API_KEY=your_key_here
+VITE_JEREMY_USER_ID=<uuid>   # account that auto-follows every new user on signup
 ```
-`hasKey()` in `src/constants/api.js` gates all real API calls.
+`hasKey()` in `src/constants/api.js` gates all real API calls. `JEREMY_USER_ID` is exported from the same file.
 
 ## Architecture
 
@@ -69,7 +70,7 @@ PostgREST (Supabase's query layer) silently truncates un-paginated results at 1,
 
 ### Auth
 
-`src/auth/Auth.js` is a fully mock implementation backed by `localStorage`. Passwords are stored in plaintext in `tt_users_db`. Designed to be replaced with Supabase — see README for the method mapping.
+`src/auth/Auth.js` is a thin wrapper around `supabase.auth`. All methods (login, signup, Google OAuth, password reset, session change) delegate directly to Supabase — no localStorage, no mock data. `VITE_JEREMY_USER_ID` in `.env` controls which account auto-follows every new user on signup (set in `App.jsx` on first profile creation).
 
 ### Custom hooks
 
