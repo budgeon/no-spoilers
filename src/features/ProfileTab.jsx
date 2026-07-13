@@ -163,13 +163,17 @@ export default function ProfileTab({user, watched, ratings, watchlist, epTotals,
 
       <div style={{background:G.surface, borderRadius:12, overflow:"hidden", marginBottom:16}}>
         {[
-          {icon:"📥", text:"Import from TV Time",  action:onImport,                           color:G.accent},
-          {icon:"🔒", text:"Change Password",       action:()=>setChangingPassword(true),      color:G.text},
-          {icon:"↪",  text:"Sign out",              action:onLogout,                           color:G.red},
+          {icon:"📥", text:"Import from TV Time",  action:onImport,                                                          color:G.accent},
+          {icon:"🔒", text:"Change Password",       action:()=>setChangingPassword(true),                                   color:G.text},
+          {icon:"💬", text:"Send Feedback",         action:()=>{window.location.href="mailto:nospoilerssupport@gmail.com";}, color:G.text, sub:"nospoilerssupport@gmail.com"},
+          {icon:"↪",  text:"Sign out",              action:onLogout,                                                         color:G.red},
         ].map((item, i) => (
           <button key={i} onClick={item.action} className="profile-action" style={{color:item.color, borderTop:i>0?`1px solid ${G.border}`:"none"}}>
             <span style={{flexShrink:0}}>{item.icon}</span>
-            <span>{item.text}</span>
+            <div style={{display:"flex", flexDirection:"column", alignItems:"flex-start"}}>
+              <span>{item.text}</span>
+              {item.sub && <span style={{fontSize:11, color:G.dim, marginTop:1}}>{item.sub}</span>}
+            </div>
           </button>
         ))}
       </div>
