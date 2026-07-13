@@ -6,9 +6,9 @@ import { updateProfile } from "../lib/db.js";
 import Center from "../components/Center.jsx";
 import ProgressBar from "../components/ProgressBar.jsx";
 
-function StatBox({label, value, sub}) {
+function StatBox({label, value, sub, onClick}) {
   return (
-    <div className="stat-box">
+    <div className="stat-box" onClick={onClick} style={{cursor: onClick ? "pointer" : undefined}}>
       <div className="stat-value">{value}</div>
       <div className="stat-label">{label}</div>
       {sub && <div className="stat-sub">{sub}</div>}
@@ -16,7 +16,7 @@ function StatBox({label, value, sub}) {
   );
 }
 
-export default function ProfileTab({user, watched, ratings, watchlist, epTotals, onLogout, onImport, onProfileUpdate}) {
+export default function ProfileTab({user, watched, ratings, watchlist, epTotals, onLogout, onImport, onProfileUpdate, onNavigate}) {
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [draftAvatar, setDraftAvatar] = useState("");
@@ -140,8 +140,8 @@ export default function ProfileTab({user, watched, ratings, watchlist, epTotals,
       </div>
 
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16}}>
-        <StatBox label="TV Shows" value={tvCount}/>
-        <StatBox label="Movies" value={mvCount}/>
+        <StatBox label="TV Shows" value={tvCount} onClick={() => onNavigate("shows")}/>
+        <StatBox label="Movies" value={mvCount} onClick={() => onNavigate("movies")}/>
         <StatBox label="Avg Rating" value={avg ? `${avg}★` : "—"}/>
         <StatBox label="Watchlist" value={Object.keys(watchlist).length}/>
       </div>
@@ -163,13 +163,17 @@ export default function ProfileTab({user, watched, ratings, watchlist, epTotals,
 
       <div style={{background:G.surface, borderRadius:12, overflow:"hidden", marginBottom:16}}>
         {[
-          {icon:"📥", text:"Import from TV Time",  action:onImport,                           color:G.accent},
-          {icon:"🔒", text:"Change Password",       action:()=>setChangingPassword(true),      color:G.text},
-          {icon:"↪",  text:"Sign out",              action:onLogout,                           color:G.red},
+          {icon:"📥", text:"Import from TV Time",  action:onImport,                                                          color:G.accent},
+          {icon:"🔒", text:"Change Password",       action:()=>setChangingPassword(true),                                   color:G.text},
+          {icon:"💬", text:"Send Feedback",         action:()=>{window.location.href="mailto:nospoilerssupport@gmail.com";}, color:G.text, sub:"nospoilerssupport@gmail.com"},
+          {icon:"↪",  text:"Sign out",              action:onLogout,                                                         color:G.red},
         ].map((item, i) => (
           <button key={i} onClick={item.action} className="profile-action" style={{color:item.color, borderTop:i>0?`1px solid ${G.border}`:"none"}}>
             <span style={{flexShrink:0}}>{item.icon}</span>
-            <span>{item.text}</span>
+            <div style={{display:"flex", flexDirection:"column", alignItems:"flex-start"}}>
+              <span>{item.text}</span>
+              {item.sub && <span style={{fontSize:11, color:G.dim, marginTop:1}}>{item.sub}</span>}
+            </div>
           </button>
         ))}
       </div>

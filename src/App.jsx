@@ -14,6 +14,7 @@ import Confetti from "./features/Confetti.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import Center from "./components/Center.jsx";
 import Spinner from "./components/Spinner.jsx";
+import LoadingScreen from "./components/LoadingScreen.jsx";
 
 const DetailSheet        = lazy(() => import("./features/DetailSheet.jsx"));
 const Importer           = lazy(() => import("./features/Importer.jsx"));
@@ -61,16 +62,16 @@ export default function App() {
 
   const handleSelect=item=>{ setSelected(item); const r=LS.get(SK.REC,[]); LS.set(SK.REC,[{...item,viewedAt:Date.now()},...r.filter(x=>!(x.id===item.id&&x.media_type===item.media_type))].slice(0,12)); };
 
-  if (authLoading) return <Center py={200}><Spinner/></Center>;
+  if (authLoading) return <LoadingScreen/>;
 
   if (resettingPassword) return (
-    <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+    <Suspense fallback={<LoadingScreen/>}>
       <ResetPasswordScreen/>
     </Suspense>
   );
 
   if(!user) return (
-    <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+    <Suspense fallback={<LoadingScreen/>}>
       <AuthScreen/>
     </Suspense>
   );
@@ -93,10 +94,10 @@ export default function App() {
 
       <div style={{maxWidth:G.MAX_W,margin:"0 auto",minHeight:"100vh",position:"relative",background:G.bg}}>
         <div style={{position:"sticky",top:0,zIndex:50,background:G.bg,borderBottom:`1px solid ${G.border}`,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{fontSize:22,fontWeight:800,color:G.text,letterSpacing:"-0.02em"}}>No<span style={{color:G.accent}}>Spoilers</span></div>
+          <div style={{fontSize:22,fontWeight:800,fontFamily:"'Outfit', sans-serif",color:G.text,letterSpacing:"-0.02em"}}>No<span style={{color:G.accent}}>Spoilers</span></div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             {!hasKey()&&<span style={{fontSize:11,color:G.accent,background:G.accentDim,padding:"3px 8px",borderRadius:20}}>Demo</span>}
-            <div style={{width:32,height:32,borderRadius:"50%",background:G.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#000"}}>{user.avatar}</div>
+            <div className="avatar avatar-md" style={{fontSize:16}}>{user.avatar}</div>
           </div>
         </div>
 
@@ -106,11 +107,11 @@ export default function App() {
             {tab==="movies"&&<MoviesTab {...sharedProps}/>}
             {tab==="discover"&&<DiscoverTab watched={watched} watchlist={watchlist} setWatchlist={setWatchlist} onSelect={handleSelect} user={user}/>}
             {tab==="friends"&&(
-              <Suspense fallback={<Center py={200}><Spinner/></Center>}>
+              <Suspense fallback={<LoadingScreen/>}>
                 <SocialTab user={user} watched={watched} onViewProfile={setViewedProfile}/>
               </Suspense>
             )}
-            {tab==="profile"&&<ProfileTab user={user} watched={watched} ratings={ratings} watchlist={watchlist} epTotals={epTotals} onLogout={()=>Auth.logout()} onImport={()=>setShowImporter(true)} onProfileUpdate={u=>setUser(prev=>({...prev,...u}))}/>}
+            {tab==="profile"&&<ProfileTab user={user} watched={watched} ratings={ratings} watchlist={watchlist} epTotals={epTotals} onLogout={()=>Auth.logout()} onImport={()=>setShowImporter(true)} onProfileUpdate={u=>setUser(prev=>({...prev,...u}))} onNavigate={setTab}/>}
           </ErrorBoundary>
         </div>
 

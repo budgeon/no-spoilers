@@ -3,6 +3,7 @@ import { G } from "../constants/tokens.js";
 import { fetchActivityFeed, fetchFollowCounts, fetchFollowing, followUser, unfollowUser, searchProfiles } from "../lib/db.js";
 import Center from "../components/Center.jsx";
 import Spinner from "../components/Spinner.jsx";
+import LoadingScreen from "../components/LoadingScreen.jsx";
 
 const timeAgo = ts => { const s = Math.floor((Date.now()-ts)/1000); if (s < 60) return "just now"; if (s < 3600) return `${Math.floor(s/60)}m`; if (s < 86400) return `${Math.floor(s/3600)}h`; return `${Math.floor(s/86400)}d`; };
 
@@ -81,7 +82,7 @@ export default function SocialTab({ user, watched, onViewProfile }) {
     }
   };
 
-  if (loading) return <Center py={120}><Spinner/></Center>;
+  if (loading) return <LoadingScreen/>;
 
   return (
     <div>

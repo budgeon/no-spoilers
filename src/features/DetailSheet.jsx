@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { G } from "../constants/tokens.js";
 import { LS, SK } from "../constants/storage.js";
 import { tmdb, TMDB_IMG, hasKey } from "../constants/api.js";
@@ -21,6 +21,12 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
   const [commentCounts, setCommentCounts] = useState({});
   const [ratingHover, setRatingHover] = useState(0);
   const loadAbortRef = useRef(null);
+  const watchedRef = useRef(watched);
+  watchedRef.current = watched;
+  const epTotalsRef = useRef(epTotals);
+  epTotalsRef.current = epTotals;
+  const onFinishRef = useRef(onFinish);
+  onFinishRef.current = onFinish;
 
   const isTV = item.media_type === "tv"; const id = item.id; const tmdbId = item.tmdbId || item.id; const name = item.name || item.title;
   const wk = `${item.media_type}_${id}`; const isW = !!watched[wk]; const rating = ratings[wk] || 0; const inWL = !!watchlist[wk];
@@ -86,12 +92,24 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
     else { const entry = {id, type: item.media_type, name, poster_path: item.poster_path, genre_ids: item.genre_ids || [], vote_average: detail?.vote_average || item.vote_average || 0, watchedAt: Date.now(), runtime: detail?.runtime || 0}; w[wk] = entry; setWatched(w); upsertWatchedItem(user.id, wk, entry); }
   };
 
-  const toggleEp = ep => {
+  const toggleEp = useCallback(ep => {
     const newK = `ep_show${id}_s${ep.season_number}e${ep.episode_number}`; const oldK = `ep_show${id}_ep${ep.id}`;
-    const w = {...watched}; const was = !!(w[newK] || w[oldK]);
-    if (was) { delete w[newK]; delete w[oldK]; setWatched(w); deleteWatchedEpisode(user.id, newK); deleteWatchedEpisode(user.id, oldK); }
-    else { const entry = {epId: ep.id, showId: id, watchedAt: Date.now(), runtime: ep.runtime || 0}; w[newK] = entry; setWatched(w); upsertWatchedEpisode(user.id, newK, entry); const tot = epTotals[id] || 0; const nc = Object.keys(w).filter(x => x.startsWith(`ep_show${id}_`)).length; if (tot > 0 && nc >= tot) onFinish(name); }
-  };
+    const was = !!(watchedRef.current[newK] || watchedRef.current[oldK]);
+    if (was) {
+      deleteWatchedEpisode(user.id, newK); deleteWatchedEpisode(user.id, oldK);
+      setWatched(prev => { const w = {...prev}; delete w[newK]; delete w[oldK]; return w; });
+    } else {
+      const entry = {epId: ep.id, showId: id, watchedAt: Date.now(), runtime: ep.runtime || 0};
+      upsertWatchedEpisode(user.id, newK, entry);
+      setWatched(prev => {
+        const w = {...prev, [newK]: entry};
+        const tot = epTotalsRef.current[id] || 0;
+        const nc = Object.keys(w).filter(x => x.startsWith(`ep_show${id}_`)).length;
+        if (tot > 0 && nc >= tot) setTimeout(() => onFinishRef.current(name), 0);
+        return w;
+      });
+    }
+  }, [id, user.id, name]);
 
   const setRate = s => { const r = {...ratings, [wk]: s}; setRatings(r); upsertRating(user.id, wk, s); };
   const handleCloseComments = (updatedComments) => {
@@ -186,7 +204,11 @@ export default function DetailSheet({item, onClose, watched, setWatched, watchli
                       </button>
                     ))}
                   </div>
-                  {episodes.map(ep => <EpisodeRow key={ep.id} ep={ep} showId={id} watched={watched} onToggle={toggleEp} onOpenComments={setCommentEp} commentCount={commentCounts[`show${id}_ep${ep.id}`]?.length || 0}/>)}
+                  {episodes.map(ep => {
+                    const nk = `ep_show${id}_s${ep.season_number}e${ep.episode_number}`;
+                    const ok = `ep_show${id}_ep${ep.id}`;
+                    return <EpisodeRow key={ep.id} ep={ep} isWatched={!!(watched[nk] || watched[ok])} onToggle={toggleEp} onOpenComments={setCommentEp} commentCount={commentCounts[`show${id}_ep${ep.id}`]?.length || 0}/>;
+                  })}
                 </div>
               )}
             </div>
