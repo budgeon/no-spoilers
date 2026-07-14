@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { G } from "./constants/tokens.js";
 import { TABS } from "./constants/tabs.js";
 import { LS, SK } from "./constants/storage.js";
@@ -80,6 +81,7 @@ export default function App() {
 
   if (!user) return (
     <>
+      <Analytics />
       {authPrompt && (
         <div style={{position:"fixed",inset:0,zIndex:300,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={()=>setAuthPrompt(false)}>
           <div style={{background:G.surface,borderRadius:20,padding:"32px 28px",maxWidth:320,width:"100%",textAlign:"center",animation:"popIn 0.2s ease"}} onClick={e=>e.stopPropagation()}>
@@ -115,6 +117,7 @@ export default function App() {
 
   return (
     <>
+      <Analytics />
       {confetti&&(
         <>
           <Confetti onDone={()=>setConfetti(null)}/>
